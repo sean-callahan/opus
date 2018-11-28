@@ -50,46 +50,43 @@ Opus source code is interpreted as a sequence of Unicode code points encoded in 
 
 ### Numeric Types
 
-    i8
-    i16
-    i32
-    i64
+    s8  - Signed 8-bit integer  (char)
+    s16 - Signed 16-bit integer (short)
+    s32 - Signed 32-bit integer (int)
+    s64 - Signed 64-bit integer (long)
 
-    u8
-    u16
-    u32
-    u64
+    u8  - Unsigned 8-bit integer
+    u16 - Unsigned 16-bit integer
+    u32 - Unsigned 32-bit integer
+    u64 - Unsigned 64-bit integer
 
-    f32
-    f64
+    f32 - 32-bit floating point number (float)
+    f64 - 64-bit floating point number (double)
 
 ### String Types
 
-    string
+    string - UTF-8 array of characters
 
 ### Array Types
 
-    [0]string
+    []string - statically sized array [of strings]
 
 ### List Types
 
-    <string>
+    <string> - dynamically sized array [of strings]
+
+### Map types
+
+    <string, s32> - hash map [with 'string' key and 's32' value]
 
 ### Class Types
 
     :: {
-        x int
-        y int
+        x s32
+        y s32
     }
 
 ### Function Types
 
     :: ()
-    :: (a int, b int) -> (c int)
-    :: (in u8) -> (callback :: (n u8))
-
-### Map types
-
-    <string, int>
-
-## Functions
+    :: (a s32, b s32) -> (c s32)
