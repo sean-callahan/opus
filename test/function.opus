@@ -1,0 +1,22 @@
+package main;
+
+vector3 :: {
+    X int;
+    Y int;
+}
+
+vector3.sum :: () -> (out int) {
+    return this.X + this.Y;
+}
+
+main :: () {
+    a := 1;
+    b := 2;
+    add(a, b);
+}
+
+add :: (a int, b int) -> (c int) {
+    return a + b;
+}
+
+//add :: hello

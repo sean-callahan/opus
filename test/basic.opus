@@ -1,0 +1,11 @@
+package basic;
+
+Basic :: {
+}
+
+Basic.add :: () {
+    var a s32;
+    var b s32;
+    var c s64;
+    var d f64;
+}
