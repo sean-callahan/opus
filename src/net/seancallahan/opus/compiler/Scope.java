@@ -20,15 +20,6 @@ public class Scope
         return parent;
     }
 
-    public Declaration get(Token token)
-    {
-        if (token.getType() != TokenType.NAME)
-        {
-            throw new IllegalArgumentException("token must have a NAME type");
-        }
-        return get(token.getValue());
-    }
-
     public Declaration get(String name)
     {
         if (members.containsKey(name))
@@ -42,14 +33,33 @@ public class Scope
         return null;
     }
 
+    public boolean contains(String name)
+    {
+        return members.containsKey(name) || (parent != null && parent.members.containsKey(name));
+    }
+
     public boolean add(Declaration declaration)
     {
-        if (members.containsKey(declaration.getName()))
+        if (members.containsKey(declaration.getName().getValue()))
         {
             return false;
         }
-        members.put(declaration.getName(), declaration);
+        members.put(declaration.getName().getValue(), declaration);
         return true;
+    }
+
+    public Scope copy()
+    {
+        Scope scope = new Scope(parent);
+        scope.members.putAll(members);
+        return scope;
+    }
+
+    public static Scope childOf(Scope other)
+    {
+        Scope scope = new Scope(other);
+        scope.members.putAll(other.members);
+        return scope;
     }
 
 }

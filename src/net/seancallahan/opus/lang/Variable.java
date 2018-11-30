@@ -18,9 +18,9 @@ public final class Variable implements Declaration
         this.type = type;
     }
 
-    public String getName()
+    public Token getName()
     {
-        return name.getValue();
+        return name;
     }
 
     public Type getType()
@@ -33,7 +33,7 @@ public final class Variable implements Declaration
     {
         if (name == null)
         {
-            return type.getName();
+            return type.getName().getValue();
         }
         return name.getValue() + " " + type;
     }

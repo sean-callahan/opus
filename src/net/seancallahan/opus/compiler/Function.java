@@ -1,6 +1,6 @@
 package net.seancallahan.opus.compiler;
 
-import net.seancallahan.opus.compiler.parser.Statement;
+import net.seancallahan.opus.compiler.parser.Body;
 import net.seancallahan.opus.lang.Declaration;
 import net.seancallahan.opus.lang.Variable;
 
@@ -13,7 +13,7 @@ public class Function implements Declaration
 
     private final List<Variable> parameters = new ArrayList<>();
     private final List<Variable> returns = new ArrayList<>();
-    private final List<Statement> body = new ArrayList<>();
+    private final Body body;
 
     private final Scope scope;
 
@@ -21,11 +21,12 @@ public class Function implements Declaration
     {
         this.name = name;
         this.scope = new Scope(parent);
+        this.body = new Body(scope);
     }
 
-    public String getName()
+    public Token getName()
     {
-        return name.getValue();
+        return name;
     }
 
     public boolean isPublic()
@@ -43,7 +44,7 @@ public class Function implements Declaration
         return returns;
     }
 
-    public List<Statement> getBody()
+    public Body getBody()
     {
         return body;
     }
@@ -53,4 +54,9 @@ public class Function implements Declaration
         return scope;
     }
 
+    @Override
+    public String toString()
+    {
+        return name.getValue();
+    }
 }

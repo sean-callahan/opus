@@ -27,7 +27,7 @@ public class CodeGenerator
     {
         this.pool = pool;
 
-        for (Statement stmt : method.getBody())
+        for (Statement stmt : method.getBody().getStatements())
         {
             if (stmt instanceof Statement.VariableDeclaration)
             {
@@ -89,7 +89,7 @@ public class CodeGenerator
         Instruction store = null;
 
         // push default value
-        switch (type.getName())
+        switch (type.getName().getValue())
         {
             case "s8":
             case "u8":
@@ -141,7 +141,7 @@ public class CodeGenerator
         byte index = 0;
         for (Variable variable : variables.keySet())
         {
-            if (assignment.getName().getValue().equals(variable.getName()))
+            if (assignment.getName().getValue().equals(variable.getName().getValue()))
             {
                 var = variable;
                 index = variables.get(variable);

@@ -34,7 +34,7 @@ public class ClassFile
 
         accessFlags = clazz.isPublic() ? AccessFlag.PUBLIC : AccessFlag.PRIVATE;
 
-        short nameIndex = constantPool.add(new Constant<>(Constant.Kind.UTF8, clazz.getName()));
+        short nameIndex = constantPool.add(new Constant<>(Constant.Kind.UTF8, clazz.getName().getValue()));
         this.thisClass = constantPool.add(new Constant<>(Constant.Kind.CLASS, nameIndex));
 
         attributeIndices.put("Code", constantPool.add(new Constant<>(Constant.Kind.UTF8, "Code")));
@@ -80,7 +80,7 @@ public class ClassFile
 
     private void addDeclaration(Declaration decl) throws CompilerException
     {
-        short name = constantPool.add(new Constant<>(Constant.Kind.UTF8, decl.getName()));
+        short name = constantPool.add(new Constant<>(Constant.Kind.UTF8, decl.getName().getValue()));
         short descriptor = constantPool.add(new Constant<>(Constant.Kind.UTF8, Descriptor.from(decl).toString()));
         declarations.put(decl, new ConstantDeclaration(name, descriptor));
     }

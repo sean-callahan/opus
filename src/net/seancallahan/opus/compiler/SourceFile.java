@@ -38,7 +38,7 @@ public class SourceFile
             throw new IllegalStateException("must first call lex()");
         }
 
-        this.parser = new Parser(this, tokens);
+        this.parser = new Parser(this, tokens, new Scope(null));
         this.parser.parse();
 
         new TypeAnalysis(parser);

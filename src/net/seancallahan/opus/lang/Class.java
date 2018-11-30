@@ -17,9 +17,9 @@ public final class Class implements Declaration
         this.name = name;
     }
 
-    public String getName()
+    public Token getName()
     {
-        return name.getValue();
+        return name;
     }
 
     public List<Variable> getFields()

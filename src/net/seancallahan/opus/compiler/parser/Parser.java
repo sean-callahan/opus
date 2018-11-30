@@ -11,21 +11,23 @@ import java.util.Map;
 
 public class Parser
 {
-    public static final boolean TRACE = false;
-
     private final ParserContext context;
 
     private final Map<String, Declaration> declarations = new HashMap<>();
 
     private String packageName;
 
-    private Scope global;
+    private final Scope global;
 
-    //private final List<Declaration> declarations = new ArrayList<>();
-
-    public Parser(SourceFile file, List<Token> tokens)
+    public Parser(SourceFile file, List<Token> tokens, Scope global)
     {
-        context = new ParserContext(file, tokens);
+        this.context = new ParserContext(file, this, tokens);
+        this.global = global;
+    }
+
+    public Scope getGlobalScope()
+    {
+        return global;
     }
 
     public void parse() throws CompilerException
@@ -62,14 +64,15 @@ public class Parser
 
     private void addDeclaration(Declaration declaration) throws CompilerException
     {
-        String name = declaration.getName();
+        Token name = declaration.getName();
 
-        if (declarations.containsKey(declaration.getName()))
+        if (declarations.containsKey(name.getValue()))
         {
             throw new CompilerException(String.format("Symbol %s already declared.", name));
         }
 
-        declarations.put(name, declaration);
+        declarations.put(name.getValue(), declaration);
+        global.add(declaration);
     }
 
     private void declaration(Token keyword) throws CompilerException
@@ -115,7 +118,7 @@ public class Parser
         switch (next.getType())
         {
             case LEFT_PAREN:
-                Function func = new Function(name, new Scope(global));
+                Function func = new Function(name, Scope.childOf(global));
                 parseFunction(context, func);
                 declaration = func;
                 break;
@@ -138,20 +141,25 @@ public class Parser
 
         context.expect(TokenType.DECLARE);
 
-        Method method = new Method(parent, name, new Scope(global));
+        // TODO: scope _should_ be child of parent class'.
+        Method method = new Method(parent, name, Scope.childOf(global));
         parseFunction(context, method);
 
         addDeclaration(method);
     }
 
     private static void parseFunction(ParserContext context, Function func) throws CompilerException {
+        context.setCurrentFunction(func);
+
         parseSignature(context, func.getParameters(), func.getReturns());
 
         context.expect(TokenType.LEFT_BRACE);
 
-        parseStatements(context, func.getBody());
+        parseBody(context, func.getBody());
 
         context.expect(TokenType.RIGHT_BRACE);
+
+        context.setCurrentFunction(null);
     }
 
     private static void parseSignature(ParserContext context, List<Variable> params, List<Variable> returns) throws SyntaxException
@@ -196,11 +204,11 @@ public class Parser
         }
     }
 
-    private static void parseStatements(ParserContext context, List<Statement> list) throws SyntaxException
+    private static void parseBody(ParserContext context, Body body) throws SyntaxException
     {
         while (context.getIterator().peek().getType() != TokenType.RIGHT_BRACE)
         {
-            list.add(Statement.parse(context));
+            body.getStatements().add(Statement.parse(context));
         }
     }
 
@@ -237,11 +245,12 @@ public class Parser
         switch (next.getType())
         {
             case NAME:
-                return new Type(next.getValue());
+                return new Type(next);
             case LEFT_BRACKET:
                 context.expect(TokenType.RIGHT_BRACKET);
                 Token name = context.expect(TokenType.NAME);
-                return new Type("[]" + name.getValue());
+                // TODO: fix arrays
+                return new Type(null);
             default:
                 throw new SyntaxException(String.format("expecting type got %s", next), next);
         }

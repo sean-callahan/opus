@@ -40,7 +40,7 @@ public class Descriptor
 
     public static Descriptor from(Variable field) throws CompilerException
     {
-        return new Descriptor(field, findTerm(field.getType().getName()));
+        return new Descriptor(field, findTerm(field.getType().getName().getValue()));
     }
 
     public static Descriptor from(Function function) throws CompilerException
@@ -51,7 +51,7 @@ public class Descriptor
 
         for (Variable param : function.getParameters())
         {
-            b.append(findTerm(param.getType().getName()));
+            b.append(findTerm(param.getType().getName().getValue()));
         }
 
         b.append(')');
@@ -65,7 +65,7 @@ public class Descriptor
         if (function.getReturns().size() == 1)
         {
             Type returns = function.getReturns().get(0).getType();
-            b.append(findTerm(returns.getName()));
+            b.append(findTerm(returns.getName().getValue()));
         }
         else
         {
@@ -75,7 +75,7 @@ public class Descriptor
         return new Descriptor(function, b.toString());
     }
 
-    private static String findTerm(String type) throws CompilerException
+    private static String findTerm(String type)
     {
         boolean array = type.startsWith("[]");
         if (array)

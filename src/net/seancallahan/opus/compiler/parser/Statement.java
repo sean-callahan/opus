@@ -1,14 +1,11 @@
 package net.seancallahan.opus.compiler.parser;
 
-import net.seancallahan.opus.compiler.Operator;
+import net.seancallahan.opus.compiler.Function;
 import net.seancallahan.opus.compiler.Token;
 import net.seancallahan.opus.compiler.TokenType;
 import net.seancallahan.opus.lang.Declaration;
 import net.seancallahan.opus.lang.Type;
 import net.seancallahan.opus.lang.Variable;
-
-import java.util.ArrayList;
-import java.util.List;
 
 public abstract class Statement
 {
@@ -38,10 +35,15 @@ public abstract class Statement
     private static VariableDeclaration parseVariable(ParserContext context) throws SyntaxException
     {
         Token name = context.getIterator().next();
+        checkForDuplicates(context, name);
         Type type = Parser.parseType(context);
         context.expect(TokenType.TERMINATOR);
 
-        return new VariableDeclaration(name, type);
+        VariableDeclaration declaration = new VariableDeclaration(name, type);
+
+        context.getCurrentFunction().getScope().add(declaration);
+
+        return declaration;
     }
 
     private static If parseIf(ParserContext context) throws SyntaxException
@@ -50,11 +52,11 @@ public abstract class Statement
 
         context.expect(TokenType.LEFT_BRACE);
 
-        ArrayList<Statement> body = new ArrayList<>();
+        Body body = new Body(context.getCurrentFunction().getScope().copy());
 
         while (!context.matches(TokenType.RIGHT_BRACE))
         {
-            body.add(Statement.parse(context));
+            body.getStatements().add(Statement.parse(context));
         }
 
         return new If(condition, body);
@@ -66,11 +68,11 @@ public abstract class Statement
 
         context.expect(TokenType.LEFT_BRACE);
 
-        ArrayList<Statement> body = new ArrayList<>();
+        Body body = new Body(context.getCurrentFunction().getScope().copy());
 
         while (!context.matches(TokenType.RIGHT_BRACE))
         {
-            body.add(Statement.parse(context));
+            body.getStatements().add(Statement.parse(context));
         }
 
         return new For(condition, body);
@@ -79,6 +81,7 @@ public abstract class Statement
     public static Constant parseConstant(ParserContext context) throws SyntaxException
     {
         Token name = context.expect(TokenType.NAME);
+        checkForDuplicates(context, name);
         Type type = Parser.parseType(context);
 
         context.expect(TokenType.ASSIGN);
@@ -111,6 +114,22 @@ public abstract class Statement
                 return new Assignment(name, value);
             default:
                 return null;
+        }
+    }
+
+    private static void checkForDuplicates(ParserContext context, Token name) throws SyntaxException
+    {
+        Function function = context.getCurrentFunction();
+
+        if (function == null)
+        {
+            return;
+        }
+
+        Declaration declaration = function.getScope().get(name.getValue());
+        if (declaration != null)
+        {
+            throw new SyntaxException(String.format("%s already declared", name), declaration.getName());
         }
     }
 
@@ -150,9 +169,9 @@ public abstract class Statement
         }
 
         @Override
-        public String getName()
+        public Token getName()
         {
-            return name.getValue();
+            return name;
         }
     }
 
@@ -186,9 +205,9 @@ public abstract class Statement
         }
 
         @Override
-        public String getName()
+        public Token getName()
         {
-            return path.getValue();
+            return path;
         }
     }
 
@@ -197,20 +216,20 @@ public abstract class Statement
         private Assignment index;
         private Expression condition;
         private Statement counter;
-        private List<Statement> body;
+        private Body body;
 
-        protected For(List<Statement> body)
+        protected For(Body body)
         {
             this.body = body;
         }
 
-        protected For(Expression condition, List<Statement> body)
+        protected For(Expression condition, Body body)
         {
             this.condition = condition;
             this.body = body;
         }
 
-        protected For(Assignment index, Expression condition, Statement counter, List<Statement> body)
+        protected For(Assignment index, Expression condition, Statement counter, Body body)
         {
             this.index = index;
             this.condition = condition;
@@ -233,7 +252,7 @@ public abstract class Statement
             return counter;
         }
 
-        public List<Statement> getBody()
+        public Body getBody()
         {
             return body;
         }
@@ -242,9 +261,9 @@ public abstract class Statement
     public static class If extends Statement
     {
         private Expression condition;
-        private List<Statement> body;
+        private Body body;
 
-        protected If(Expression condition, List<Statement> body)
+        protected If(Expression condition, Body body)
         {
             this.condition = condition;
             this.body = body;
@@ -255,7 +274,7 @@ public abstract class Statement
             return condition;
         }
 
-        public List<Statement> getBody()
+        public Body getBody()
         {
             return body;
         }
@@ -278,7 +297,7 @@ public abstract class Statement
         }
 
         @Override
-        public String getName()
+        public Token getName()
         {
             return variable.getName();
         }

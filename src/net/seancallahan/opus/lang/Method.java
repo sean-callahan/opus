@@ -34,7 +34,7 @@ public final class Method extends Function
     @Override
     public String toString()
     {
-        return String.format("~%s %s", getParentName(), super.toString());
+        return String.format("%s.%s", getParentName(), super.toString());
     }
 
 }
