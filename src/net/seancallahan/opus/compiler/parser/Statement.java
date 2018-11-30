@@ -1,5 +1,6 @@
 package net.seancallahan.opus.compiler.parser;
 
+import net.seancallahan.opus.compiler.Operator;
 import net.seancallahan.opus.compiler.Token;
 import net.seancallahan.opus.compiler.TokenType;
 import net.seancallahan.opus.lang.Declaration;

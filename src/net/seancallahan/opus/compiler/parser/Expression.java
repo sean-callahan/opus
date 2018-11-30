@@ -321,6 +321,11 @@ public abstract class Expression
             this.token = context.getIterator().next();
         }
 
+        public Token getToken()
+        {
+            return token;
+        }
+
         @Override
         public void print()
         {

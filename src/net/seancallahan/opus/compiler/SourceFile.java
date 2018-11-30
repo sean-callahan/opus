@@ -2,6 +2,7 @@ package net.seancallahan.opus.compiler;
 
 import net.seancallahan.opus.compiler.jvm.ClassFile;
 import net.seancallahan.opus.compiler.parser.Parser;
+import net.seancallahan.opus.compiler.semantics.TypeAnalysis;
 import net.seancallahan.opus.lang.Declaration;
 import net.seancallahan.opus.lang.Class;
 
@@ -39,6 +40,8 @@ public class SourceFile
 
         this.parser = new Parser(this, tokens);
         this.parser.parse();
+
+        new TypeAnalysis(parser);
     }
 
     public void compile() throws IOException, CompilerException

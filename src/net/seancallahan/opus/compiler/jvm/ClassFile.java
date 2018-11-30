@@ -108,7 +108,7 @@ public class ClassFile
 
         out.writeShort(1); // attributes
 
-        byte[] info = createCodeAttribute(method);
+        byte[] info = createCodeAttribute(method, constantPool);
         writeAttribute(out, "Code", info);
     }
 
@@ -121,9 +121,9 @@ public class ClassFile
         out.write(info);
     }
 
-    private static byte[] createCodeAttribute(Method method) throws CompilerException
+    private static byte[] createCodeAttribute(Method method, ConstantPool pool) throws CompilerException
     {
-        byte[] code = new CodeGenerator(method).getCode();
+        byte[] code = new CodeGenerator(method, pool).getCode();
 
         ByteBuffer buffer = ByteBuffer.allocate(code.length + 12);
 

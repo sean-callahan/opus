@@ -7,6 +7,11 @@ public final class Variable implements Declaration
     private final Token name;
     private final Type type;
 
+    public Variable(Type type)
+    {
+        this(null, type);
+    }
+
     public Variable(Token name, Type type)
     {
         this.name = name;
@@ -26,6 +31,10 @@ public final class Variable implements Declaration
     @Override
     public String toString()
     {
+        if (name == null)
+        {
+            return type.getName();
+        }
         return name.getValue() + " " + type;
     }
 

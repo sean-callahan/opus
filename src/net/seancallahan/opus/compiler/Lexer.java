@@ -112,11 +112,21 @@ public class Lexer
                 input.unread(rune);
                 return emit(TokenType.ASSIGN);
             case '+':
+                if ((rune = input.read()) == '+')
+                {
+                    return emit(TokenType.OPERATOR, Operator.INCR);
+                }
+                input.unread(rune);
                 return emit(TokenType.OPERATOR, Operator.ADD);
             case '-':
-                if ((rune = input.read()) == '>')
+                rune = input.read();
+                if (rune == '>')
                 {
                     return emit(TokenType.RETURNS);
+                }
+                else if (rune == '-')
+                {
+                    return emit(TokenType.OPERATOR, Operator.DECR);
                 }
                 input.unread(rune);
                 return emit(TokenType.OPERATOR, Operator.SUBTRACT);

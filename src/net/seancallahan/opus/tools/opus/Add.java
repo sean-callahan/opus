@@ -7,7 +7,7 @@ public class Add
 
     public Add(int a, int b)
     {
-        this.a = a;
+        this.a = 0x53;
         this.b = b;
     }
 

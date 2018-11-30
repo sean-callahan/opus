@@ -9,7 +9,7 @@ Vector2 :: {
 //    return Vector2 {
 //        X: this.X + other.X,
 //        Y: this.Y + other.Y
-//    }
+//    };
 //}
 
 //Vector2.Orthogonal :: (other Vector2) -> (yes bool) {
@@ -17,7 +17,7 @@ Vector2 :: {
 //}
 
 //Vector2.Dot :: (other Vector2) -> (c s32) {
-//    return this.X * other.X + this.X * other.X;
+//    return this.X * other.X + this.Y * other.Y;
 //}
 
 Vector2.Distance :: (other Vector2) -> (d s32) {

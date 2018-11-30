@@ -1,11 +1,8 @@
 package basic;
 
-Basic :: {
-}
+Basic :: {}
 
-Basic.add :: () {
+Basic.Add :: () -> (test s32) {
     var a s32;
-    var b s32;
-    var c s64;
-    var d f64;
+    a = 5;
 }
