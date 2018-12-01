@@ -2,7 +2,8 @@ package basic;
 
 Basic :: {}
 
-Basic.Add :: () -> (test s32) {
+Basic.Foo :: () -> s32 {
     a: s32;
     a = 5;
+    return a;
 }

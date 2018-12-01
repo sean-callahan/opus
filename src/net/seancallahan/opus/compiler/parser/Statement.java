@@ -98,6 +98,7 @@ public abstract class Statement
 
     private static Return parseReturn(ParserContext context) throws SyntaxException
     {
+        // TODO: multi returns
         Expression value = Expression.parse(context);
         return new Return(value);
     }

@@ -171,6 +171,13 @@ public class Parser
 
         if (context.has(TokenType.RETURNS))
         {
+            if (!context.has(TokenType.LEFT_PAREN))
+            {
+                Type type = parseType(context);
+                returns.add(new Variable(type));
+                return;
+            }
+
             context.expect(TokenType.LEFT_PAREN);
             parseVariableList(context, returns);
             context.expect(TokenType.RIGHT_PAREN);
