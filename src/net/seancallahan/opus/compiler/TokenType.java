@@ -26,7 +26,6 @@ public enum TokenType
     COMMA,
     DOT,
 
-    CONST,
     ELSE,
     FALSE,
     FOR,
@@ -65,7 +64,6 @@ public enum TokenType
         text.put(RIGHT_BRACKET, "]");
         text.put(RIGHT_PAREN, ")");
 
-        text.put(CONST, "const");
         text.put(ELSE, "else");
         text.put(FOR, "for");
         text.put(IF, "if");

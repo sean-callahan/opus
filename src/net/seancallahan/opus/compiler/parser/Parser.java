@@ -44,7 +44,6 @@ public class Parser
 
             switch (next.getType())
             {
-                case CONST:
                 case IMPORT:
                     declaration(next);
                     break;
@@ -81,9 +80,6 @@ public class Parser
 
         switch (keyword.getType())
         {
-            case CONST:
-                declaration = Statement.parseConstant(context);
-                break;
             case IMPORT:
                 declaration = Statement.parseImport(context);
                 break;
@@ -126,6 +122,9 @@ public class Parser
                 Class clazz = new Class(name);
                 parseClass(context, clazz);
                 declaration = clazz;
+                break;
+            case NAME:
+                declaration = Statement.parseConstant(context, name);
                 break;
             default:
                 throw new SyntaxException(String.format("expected %s or %s got %s",

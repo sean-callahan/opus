@@ -21,8 +21,6 @@ public abstract class Statement
                 return parseIf(context);
             case FOR:
                 return parseFor(context);
-            case CONST:
-                return parseConstant(context);
             case RETURN:
                 return parseReturn(context);
             default:
@@ -77,15 +75,17 @@ public abstract class Statement
         return new For(condition, body);
     }
 
-    public static Constant parseConstant(ParserContext context) throws SyntaxException
+    public static Constant parseConstant(ParserContext context, Token name) throws SyntaxException
     {
-        Token name = context.expect(TokenType.NAME);
-        checkForDuplicates(context, name);
+        // TODO: check scope for duplicates
+
         Type type = Parser.parseType(context);
 
         context.expect(TokenType.ASSIGN);
 
         Expression value = Expression.parse(context);
+
+        context.expect(TokenType.TERMINATOR);
 
         return new Constant(name, type, value);
     }

@@ -260,7 +260,6 @@ public class Lexer
     private static final HashMap<String, TokenType> keywords = new HashMap<>();
 
     static {
-        keywords.put("const", TokenType.CONST);
         keywords.put("else", TokenType.ELSE);
         keywords.put("false", TokenType.FALSE);
         keywords.put("for", TokenType.FOR);
