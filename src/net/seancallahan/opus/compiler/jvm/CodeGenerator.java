@@ -163,6 +163,7 @@ public class CodeGenerator
 
         long value = Long.parseLong(literal.getToken().getValue());
         // NOTE: ONLY SUPPORTS 1 << 63 due to max size of long
+        // TODO: floats
 
         if (value < 1 << Byte.SIZE)
         {

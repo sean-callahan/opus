@@ -30,7 +30,7 @@ public class Lexer
 
     private void lex() throws IOException, Error
     {
-        boolean eof = false;
+        boolean eof;
         do
         {
             eof = next();
@@ -128,6 +128,11 @@ public class Lexer
                 {
                     return emit(TokenType.OPERATOR, Operator.DECR);
                 }
+                else if (rune >= '0' && rune <= '9')
+                {
+                    input.unread(rune);
+                    return number('-');
+                }
                 input.unread(rune);
                 return emit(TokenType.OPERATOR, Operator.SUBTRACT);
             case '/':
@@ -221,7 +226,7 @@ public class Lexer
         buffer.append((char)first);
 
         int rune = input.read();
-        while ('0' <= rune && rune <= '9') {
+        while (('0' <= rune && rune <= '9') || rune == '.') {
             buffer.append((char)rune);
             rune = input.read();
         }
