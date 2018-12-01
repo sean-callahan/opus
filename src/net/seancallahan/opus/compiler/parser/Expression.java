@@ -127,7 +127,7 @@ public abstract class Expression
             do
             {
                 Token field = context.expect(TokenType.NAME);
-                context.expect(TokenType.SET);
+                context.expect(TokenType.DECLARE);
 
                 Expression expression = parse(context);
 

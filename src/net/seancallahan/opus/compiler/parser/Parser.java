@@ -96,7 +96,7 @@ public class Parser
 
     private void name(Token name) throws CompilerException
     {
-        if (context.has(TokenType.DECLARE))
+        if (context.has(TokenType.DECLARE_GLOBAL))
         {
             declare(name);
         }
@@ -139,7 +139,7 @@ public class Parser
     {
         Token name = context.expect(TokenType.NAME);
 
-        context.expect(TokenType.DECLARE);
+        context.expect(TokenType.DECLARE_GLOBAL);
 
         // TODO: scope _should_ be child of parent class'.
         Method method = new Method(parent, name, Scope.childOf(global));

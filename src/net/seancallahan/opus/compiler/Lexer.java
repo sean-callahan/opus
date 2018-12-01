@@ -95,7 +95,7 @@ public class Lexer
             case ':':
                 if ((rune = input.read()) == ':')
                 {
-                    return emit(TokenType.DECLARE);
+                    return emit(TokenType.DECLARE_GLOBAL);
                 }
                 input.unread(rune);
                 if ((rune = input.read()) == '=')
@@ -103,7 +103,7 @@ public class Lexer
                     return emit(TokenType.DEFINE);
                 }
                 input.unread(rune);
-                return emit(TokenType.SET);
+                return emit(TokenType.DECLARE);
             case '=':
                 if ((rune = input.read()) == '=')
                 {
@@ -267,7 +267,6 @@ public class Lexer
         keywords.put("return", TokenType.RETURN);
         keywords.put("this", TokenType.THIS);
         keywords.put("true", TokenType.TRUE);
-        keywords.put("var", TokenType.VAR);
     }
 
     public static class Error extends CompilerException

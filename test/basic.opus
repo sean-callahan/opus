@@ -3,6 +3,6 @@ package basic;
 Basic :: {}
 
 Basic.Add :: () -> (test s32) {
-    var a s32;
+    a: s32;
     a = 5;
 }

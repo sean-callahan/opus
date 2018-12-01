@@ -17,8 +17,6 @@ public abstract class Statement
         {
             case NAME:
                 return simple(context, next);
-            case VAR:
-                return parseVariable(context);
             case IF:
                 return parseIf(context);
             case FOR:
@@ -32,11 +30,12 @@ public abstract class Statement
         }
     }
 
-    private static VariableDeclaration parseVariable(ParserContext context) throws SyntaxException
+    private static VariableDeclaration parseVariableDeclaration(ParserContext context, Token name) throws SyntaxException
     {
-        Token name = context.getIterator().next();
         checkForDuplicates(context, name);
+
         Type type = Parser.parseType(context);
+
         context.expect(TokenType.TERMINATOR);
 
         VariableDeclaration declaration = new VariableDeclaration(name, type);
@@ -112,6 +111,8 @@ public abstract class Statement
                 Expression value = Expression.parse(context);
                 context.expect(TokenType.TERMINATOR);
                 return new Assignment(name, value);
+            case DECLARE:
+                return parseVariableDeclaration(context, name);
             default:
                 return null;
         }

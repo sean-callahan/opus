@@ -14,8 +14,8 @@ public enum TokenType
     ASSIGN,
     DEFINE,
     RETURNS,
+    DECLARE_GLOBAL,
     DECLARE,
-    SET,
 
     LEFT_BRACE,
     LEFT_BRACKET,
@@ -38,7 +38,7 @@ public enum TokenType
     RETURN,
     THIS,
     TRUE,
-    VAR;
+    ;
 
     @Override
     public String toString()
@@ -55,7 +55,7 @@ public enum TokenType
     static
     {
         text.put(TERMINATOR, "semicolon");
-        text.put(DECLARE, "::");
+        text.put(DECLARE_GLOBAL, "::");
         text.put(RETURNS, "->");
 
         text.put(LEFT_BRACE, "{");
@@ -74,6 +74,5 @@ public enum TokenType
         text.put(PACKAGE, "package");
         text.put(RETURN, "return");
         text.put(THIS, "this");
-        text.put(VAR, "var");
     }
 }
