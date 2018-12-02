@@ -11,6 +11,7 @@ import java.util.List;
 public class Lexer
 {
     private static final int EOF = -1;
+    private static final int TERMINATOR = ';';
 
     private final PushbackInputStream input;
 
@@ -72,7 +73,7 @@ public class Lexer
 
         switch (rune)
         {
-            case ';':
+            case TERMINATOR:
                 return emit(TokenType.TERMINATOR);
             case '{':
                 return emit(TokenType.LEFT_BRACE);
@@ -92,6 +93,8 @@ public class Lexer
                 return emit(TokenType.DOT);
             case '"':
                 return string();
+            case '%':
+                return emit(TokenType.OPERATOR, Operator.MOD);
             case ':':
                 rune = input.read();
                 if (rune == ':')
@@ -169,19 +172,43 @@ public class Lexer
                 input.unread(rune);
                 return emit(TokenType.OPERATOR, Operator.MULTIPLY);
             case '<':
-                if ((rune = input.read()) == '=')
+                rune = input.read();
+                if (rune == '=')
                 {
                     return emit(TokenType.OPERATOR, Operator.LEQ);
+                }
+                else if (rune == '<')
+                {
+                    return emit(TokenType.OPERATOR, Operator.LSHIFT);
                 }
                 input.unread(rune);
                 return emit(TokenType.OPERATOR, Operator.LT);
             case '>':
-                if ((rune = input.read()) == '=')
+                rune = input.read();
+                if (rune == '=')
                 {
                     return emit(TokenType.OPERATOR, Operator.GEQ);
                 }
+                else if (rune == '>')
+                {
+                    return emit(TokenType.OPERATOR, Operator.RSHIFT);
+                }
                 input.unread(rune);
                 return emit(TokenType.OPERATOR, Operator.GT);
+            case '|':
+                rune = input.read();
+                if (rune != '|')
+                {
+                    throw new Error(String.format("invalid character '%c'", (char)rune), position);
+                }
+                return emit(TokenType.OPERATOR, Operator.OR);
+            case '&':
+                rune = input.read();
+                if (rune != '&')
+                {
+                    throw new Error(String.format("invalid character '%c'", (char)rune), position);
+                }
+                return emit(TokenType.OPERATOR, Operator.AND);
             default:
                 throw new Error(String.format("invalid character '%c'", (char)rune), position);
         }
@@ -232,14 +259,11 @@ public class Lexer
 
         position.setColumn(position.getColumn() + buffer.length());
 
-        for (String keyword : keywords.keySet())
+        String keyword = buffer.toString();
+
+        if (keywords.containsKey(keyword))
         {
-            if (buffer.toString().equals(keyword))
-            {
-                reset();
-                emit(keywords.get(keyword));
-                return false;
-            }
+            return emit(keywords.get(keyword));
         }
 
         return emit(TokenType.NAME);
@@ -300,7 +324,6 @@ public class Lexer
         keywords.put("false", TokenType.FALSE);
         keywords.put("for", TokenType.FOR);
         keywords.put("if", TokenType.IF);
-        keywords.put("in", TokenType.IN);
         keywords.put("import", TokenType.IMPORT);
         keywords.put("nil", TokenType.NIL);
         keywords.put("package", TokenType.PACKAGE);

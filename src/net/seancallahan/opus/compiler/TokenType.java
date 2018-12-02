@@ -5,34 +5,34 @@ import java.util.HashMap;
 public enum TokenType
 {
     EOF,
-    TERMINATOR,
+    TERMINATOR,      // ;
 
     NAME,
     LITERAL,
 
-    OPERATOR,
-    OPERATOR_DOUBLE,
-    OPERATOR_ASSIGN,
-    ASSIGN,
-    DEFINE,
-    RETURNS,
-    DECLARE_GLOBAL,
-    DECLARE,
+    OPERATOR,        // op   (+, -, *, /, etc.)
+    OPERATOR_DOUBLE, // opop (++, --)
+    OPERATOR_ASSIGN, // op=  (+=, -=, *=, /=, etc.)
+    ASSIGN,          // =
+    DEFINE,          // :=
+    RETURNS,         // ->
+    DECLARE_GLOBAL,  // ::
+    DECLARE,         // :
 
-    LEFT_BRACE,
-    LEFT_BRACKET,
-    LEFT_PAREN,
-    RIGHT_BRACE,
-    RIGHT_BRACKET,
-    RIGHT_PAREN,
-    COMMA,
-    DOT,
+    LEFT_BRACE,      // {
+    LEFT_BRACKET,    // [
+    LEFT_PAREN,      // (
+    RIGHT_BRACE,     // }
+    RIGHT_BRACKET,   // ]
+    RIGHT_PAREN,     // )
+    COMMA,           // ,
+    DOT,             // .
 
+    // keywords
     ELSE,
     FALSE,
     FOR,
     IF,
-    IN,
     IMPORT,
     NIL,
     PACKAGE,
@@ -57,6 +57,7 @@ public enum TokenType
     {
         text.put(TERMINATOR, "semicolon");
         text.put(DECLARE_GLOBAL, "::");
+        text.put(DEFINE, ":=");
         text.put(RETURNS, "->");
 
         text.put(LEFT_BRACE, "{");
@@ -69,7 +70,6 @@ public enum TokenType
         text.put(ELSE, "else");
         text.put(FOR, "for");
         text.put(IF, "if");
-        text.put(IN, "in");
         text.put(IMPORT, "import");
         text.put(PACKAGE, "package");
         text.put(RETURN, "return");

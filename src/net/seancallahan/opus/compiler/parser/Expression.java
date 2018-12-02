@@ -34,7 +34,7 @@ public abstract class Expression
     {
         Expression left = addition(context);
 
-        while (context.matches(Operator.GT, Operator.GEQ, Operator.LT, Operator.LEQ))
+        while (context.matches(Operator.GT, Operator.GEQ, Operator.LT, Operator.LEQ, Operator.AND, Operator.OR))
         {
             Operator operator = context.getIterator().next().getOperator();
             Expression right = addition(context);
@@ -62,7 +62,7 @@ public abstract class Expression
     {
         Expression left = unary(context);
 
-        while (context.matches(Operator.DIVIDE, Operator.MULTIPLY))
+        while (context.matches(Operator.DIVIDE, Operator.MULTIPLY, Operator.MOD))
         {
             Operator operator = context.getIterator().next().getOperator();
             Expression right = unary(context);

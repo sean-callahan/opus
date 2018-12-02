@@ -5,18 +5,26 @@ import java.util.HashMap;
 public enum Operator
 {
     NONE,
-    ADD,
-    SUBTRACT,
-    MULTIPLY,
-    DIVIDE,
+    ADD,      // +
+    SUBTRACT, // -
+    MULTIPLY, // *
+    DIVIDE,   // /
 
-    NOT,
-    NEQ,
-    EQ,
-    LT,
-    LEQ,
-    GT,
-    GEQ;
+    MOD,      // %
+    LSHIFT,   // <<
+    RSHIFT,   // >>
+
+    OR,       // ||
+    AND,      // &&
+    NOT,      // !
+    EQ,       // ==
+    LT,       // <
+    GT,       // >
+
+    NEQ,      // !=
+    LEQ,      // <=
+    GEQ,      // >=
+    ;
 
     @Override
     public String toString()
@@ -37,12 +45,19 @@ public enum Operator
         text.put(MULTIPLY, "*");
         text.put(DIVIDE, "/");
 
+        text.put(MOD, "%");
+        text.put(LSHIFT, "<<");
+        text.put(RSHIFT, ">>");
+
+        text.put(OR, "||");
+        text.put(AND, "&&");
         text.put(NOT, "!");
-        text.put(NEQ, "!=");
         text.put(EQ, "==");
         text.put(LT, "<");
-        text.put(LEQ, "<=");
         text.put(GT, ">");
+
+        text.put(NEQ, "!=");
+        text.put(LEQ, "<=");
         text.put(GEQ, ">=");
     }
 }
