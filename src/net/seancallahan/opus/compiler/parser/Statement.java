@@ -163,7 +163,7 @@ public abstract class Statement
         private final Type type;
         private final Expression value;
 
-        public Constant(Token name, Type type, Expression value)
+        Constant(Token name, Type type, Expression value)
         {
             this.name = name;
             this.type = type;
@@ -181,7 +181,7 @@ public abstract class Statement
     {
         private Expression expression;
 
-        public Return(Expression expression)
+        Return(Expression expression)
         {
             this.expression = expression;
         }
@@ -196,7 +196,7 @@ public abstract class Statement
     {
         private final Token path;
 
-        public Import(Token path)
+        Import(Token path)
         {
             this.path = path;
         }
@@ -225,7 +225,7 @@ public abstract class Statement
             this.body = body;
         }
 
-        protected For(Expression condition, Body body)
+        For(Expression condition, Body body)
         {
             this.condition = condition;
             this.body = body;
@@ -265,7 +265,7 @@ public abstract class Statement
         private Expression condition;
         private Body body;
 
-        protected If(Expression condition, Body body)
+        If(Expression condition, Body body)
         {
             this.condition = condition;
             this.body = body;
@@ -287,12 +287,12 @@ public abstract class Statement
         private final Variable variable;
         private final Expression expression;
 
-        public VariableDeclaration(Token name, Type type)
+        VariableDeclaration(Token name, Type type)
         {
             this(name, type, null);
         }
 
-        public VariableDeclaration(Token name, Type type, Expression expression)
+        VariableDeclaration(Token name, Type type, Expression expression)
         {
             this.variable = new Variable(name, type);
             this.expression = expression;

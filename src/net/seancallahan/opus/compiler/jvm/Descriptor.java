@@ -1,6 +1,5 @@
 package net.seancallahan.opus.compiler.jvm;
 
-import net.seancallahan.opus.compiler.CompilerException;
 import net.seancallahan.opus.lang.Type;
 import net.seancallahan.opus.lang.Declaration;
 import net.seancallahan.opus.compiler.Function;
@@ -29,21 +28,21 @@ public class Descriptor
         return value;
     }
 
-    public static Descriptor from(Declaration decl) throws CompilerException
+    public static Descriptor from(Declaration decl)
     {
         if (decl.getClass().isAssignableFrom(Variable.class))
             return from((Variable) decl);
-        else if (decl instanceof Function || decl instanceof Method)
+        else if (decl instanceof Method || decl instanceof Function)
             return from((Function) decl);
         throw new UnsupportedOperationException("Cannot format declaration of type: " + decl.getClass());
     }
 
-    public static Descriptor from(Variable field) throws CompilerException
+    public static Descriptor from(Variable field)
     {
         return new Descriptor(field, findTerm(field.getType().getName().getValue()));
     }
 
-    public static Descriptor from(Function function) throws CompilerException
+    public static Descriptor from(Function function)
     {
         StringBuilder b = new StringBuilder();
 
@@ -88,16 +87,16 @@ public class Descriptor
             case "bool":
                 return "Z";
             case "u8":
-            case "i8":
+            case "s8":
                 return "B";
             case "u16":
-            case "i16":
+            case "s16":
                 return "S";
             case "u32":
             case "s32":
                 return "I";
             case "u64":
-            case "i64":
+            case "s64":
                 return "J";
             case "f32":
                 return "F";

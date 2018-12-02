@@ -6,62 +6,34 @@ public class Type implements Declaration
 {
     private final Token name;
 
+    private final boolean primitive;
     private static final String[] primitives = new String[]
     {
         "bool", "string", "u8", "u16", "u32", "u64",
         "s8", "s16", "s32", "s64", "f32", "f64",
     };
 
-    private static final int[] primitiveSizes = new int[]
-    {
-        1, // bool
-        0, // string
-        1, // u8
-        2, // u16
-        4, // u32
-        8, // u64
-        1, // s8
-        2, // s16
-        4, // s32
-        8, // s64
-        4, // f32
-        8, // f64
-    };
-
-    private final int size;
-    private final boolean primitive;
-
     public Type(Token name)
     {
         this.name = name;
 
-        int size = 0;
-
         boolean primitive = false;
 
-        for (int i = 0; i < primitives.length; i++)
+        for (String primitiveName : primitives)
         {
-            String primitiveName = primitives[i];
             if (primitiveName.equals(name.getValue()))
             {
                 primitive = true;
-                size = primitiveSizes[i];
                 break;
             }
         }
 
-        this.size = size;
         this.primitive = primitive;
     }
 
     public Token getName()
     {
         return name;
-    }
-
-    public int getSize()
-    {
-        return size;
     }
 
     @Override

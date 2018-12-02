@@ -3,7 +3,6 @@ package net.seancallahan.opus.compiler.jvm;
 import net.seancallahan.opus.compiler.CompilerException;
 import net.seancallahan.opus.compiler.parser.Expression;
 import net.seancallahan.opus.compiler.parser.Statement;
-import net.seancallahan.opus.lang.Declaration;
 import net.seancallahan.opus.lang.Method;
 import net.seancallahan.opus.lang.Type;
 import net.seancallahan.opus.lang.Variable;
@@ -37,10 +36,20 @@ public class CodeGenerator
             {
                 assignment((Statement.Assignment)stmt);
             }
+            else if (stmt instanceof Statement.Return)
+            {
+                returnStatement((Statement.Return)stmt);
+            }
         }
 
-        // TODO: add valued returns
-        add(Instruction.ret);
+        List<Statement> stmts = method.getBody().getStatements();
+
+        Statement last = stmts.size() > 1 ? stmts.get(stmts.size()-1) : null;
+
+        if (last != null && !(last instanceof Statement.Return))
+        {
+            add(Instruction.ret);
+        }
     }
 
     public int getStackSize()
@@ -67,14 +76,9 @@ public class CodeGenerator
         }
     }
 
-    private static void expr()
+    private static void expr(Expression expr)
     {
-
-    }
-
-    private static void statement(Declaration declaration)
-    {
-
+        // NOTE: maybe return the type of the expression?
     }
 
     private void variableDeclaration(Statement.VariableDeclaration declaration)
@@ -205,5 +209,10 @@ public class CodeGenerator
         }
 
         throw new UnsupportedOperationException("value too large");
+    }
+
+    private void returnStatement(Statement.Return stmt)
+    {
+        expr(stmt.getExpression());
     }
 }

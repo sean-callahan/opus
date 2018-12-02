@@ -10,9 +10,6 @@ public enum Operator
     MULTIPLY,
     DIVIDE,
 
-    INCR,
-    DECR,
-
     NOT,
     NEQ,
     EQ,
@@ -39,9 +36,6 @@ public enum Operator
         text.put(SUBTRACT, "-");
         text.put(MULTIPLY, "*");
         text.put(DIVIDE, "/");
-
-        text.put(INCR, "++");
-        text.put(DECR, "--");
 
         text.put(NOT, "!");
         text.put(NEQ, "!=");

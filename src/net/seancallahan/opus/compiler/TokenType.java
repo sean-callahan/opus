@@ -11,6 +11,8 @@ public enum TokenType
     LITERAL,
 
     OPERATOR,
+    OPERATOR_DOUBLE,
+    OPERATOR_ASSIGN,
     ASSIGN,
     DEFINE,
     RETURNS,

@@ -93,12 +93,12 @@ public class Lexer
             case '"':
                 return string();
             case ':':
-                if ((rune = input.read()) == ':')
+                rune = input.read();
+                if (rune == ':')
                 {
                     return emit(TokenType.DECLARE_GLOBAL);
                 }
-                input.unread(rune);
-                if ((rune = input.read()) == '=')
+                else if (rune == '=')
                 {
                     return emit(TokenType.DEFINE);
                 }
@@ -112,9 +112,14 @@ public class Lexer
                 input.unread(rune);
                 return emit(TokenType.ASSIGN);
             case '+':
-                if ((rune = input.read()) == '+')
+                rune = input.read();
+                if (rune == '+')
                 {
-                    return emit(TokenType.OPERATOR, Operator.INCR);
+                    return emit(TokenType.OPERATOR_DOUBLE, Operator.ADD);
+                }
+                else if (rune == '=')
+                {
+                    return emit(TokenType.OPERATOR_ASSIGN, Operator.ADD);
                 }
                 input.unread(rune);
                 return emit(TokenType.OPERATOR, Operator.ADD);
@@ -126,7 +131,11 @@ public class Lexer
                 }
                 else if (rune == '-')
                 {
-                    return emit(TokenType.OPERATOR, Operator.DECR);
+                    return emit(TokenType.OPERATOR_DOUBLE, Operator.SUBTRACT);
+                }
+                else if (rune == '=')
+                {
+                    return emit(TokenType.OPERATOR_ASSIGN, Operator.SUBTRACT);
                 }
                 else if (rune >= '0' && rune <= '9')
                 {
@@ -136,13 +145,28 @@ public class Lexer
                 input.unread(rune);
                 return emit(TokenType.OPERATOR, Operator.SUBTRACT);
             case '/':
-                if ((rune = input.read()) == '/')
+                rune = input.read();
+                if (rune == '/')
                 {
                     return comment();
+                }
+                else if (rune == '=')
+                {
+                    return emit(TokenType.OPERATOR_ASSIGN, Operator.DIVIDE);
+                }
+                else if (rune == '*')
+                {
+                    return commentMulti();
                 }
                 input.unread(rune);
                 return emit(TokenType.OPERATOR, Operator.DIVIDE);
             case '*':
+                rune = input.read();
+                if (rune == '=')
+                {
+                    return emit(TokenType.OPERATOR_ASSIGN, Operator.MULTIPLY);
+                }
+                input.unread(rune);
                 return emit(TokenType.OPERATOR, Operator.MULTIPLY);
             case '<':
                 if ((rune = input.read()) == '=')
@@ -243,6 +267,18 @@ public class Lexer
         {
             rune = input.read();
         }
+        return false;
+    }
+
+    private boolean commentMulti() throws IOException
+    {
+        int rune = 0;
+        int last;
+        do
+        {
+            last = rune;
+            rune = input.read();
+        } while (rune != EOF && !(last == '*' && rune == '/'));
         return false;
     }
 
