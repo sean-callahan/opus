@@ -1,8 +1,11 @@
 package net.seancallahan.opus.compiler.parser;
 
 import net.seancallahan.opus.compiler.Operator;
+import net.seancallahan.opus.compiler.Scope;
 import net.seancallahan.opus.compiler.Token;
 import net.seancallahan.opus.compiler.TokenType;
+import net.seancallahan.opus.compiler.semantics.Resolvable;
+import net.seancallahan.opus.compiler.semantics.Resolver;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -11,8 +14,20 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public abstract class Expression
+public abstract class Expression implements Resolvable
 {
+    private final Scope scope;
+
+    protected Expression(Scope scope)
+    {
+        this.scope = scope;
+    }
+
+    public Scope getScope()
+    {
+        return scope;
+    }
+
     public static Expression parse(ParserContext context) throws SyntaxException
     {
         return equals(context);
@@ -26,7 +41,7 @@ public abstract class Expression
         {
             Operator operator = context.getIterator().next().getOperator();
             Expression right = comparison(context);
-            left = new Binary(left, operator, right);
+            left = new Binary(context.getCurrentBody().getScope(), left, operator, right);
         }
 
         return left;
@@ -40,7 +55,7 @@ public abstract class Expression
         {
             Operator operator = context.getIterator().next().getOperator();
             Expression right = addition(context);
-            left = new Binary(left, operator, right);
+            left = new Binary(context.getCurrentBody().getScope(), left, operator, right);
         }
 
         return left;
@@ -54,7 +69,7 @@ public abstract class Expression
         {
             Operator operator = context.getIterator().next().getOperator();
             Expression right = multiplication(context);
-            left = new Binary(left, operator, right);
+            left = new Binary(context.getCurrentBody().getScope(), left, operator, right);
         }
 
         return left;
@@ -68,7 +83,7 @@ public abstract class Expression
         {
             Operator operator = context.getIterator().next().getOperator();
             Expression right = unary(context);
-            left = new Binary(left, operator, right);
+            left = new Binary(context.getCurrentBody().getScope(), left, operator, right);
         }
 
         return left;
@@ -80,7 +95,7 @@ public abstract class Expression
         {
             Operator operator = context.getIterator().next().getOperator();
             Expression right = unary(context);
-            return new Unary(operator, right);
+            return new Unary(context.getCurrentBody().getScope(), operator, right);
         }
 
         return primary(context);
@@ -101,12 +116,12 @@ public abstract class Expression
                 return createNew(context, name);
             }
 
-            return new Literal(name);
+            return new Literal(context.getCurrentBody().getScope(), name);
         }
 
         if (context.matches(TokenType.LITERAL,TokenType.NIL, TokenType.TRUE, TokenType.FALSE))
         {
-            return new Literal(context);
+            return new Literal(context.getCurrentBody().getScope(), context);
         }
 
         if (context.matches(TokenType.LEFT_PAREN))
@@ -114,7 +129,7 @@ public abstract class Expression
             context.getIterator().skip(1);
             Expression group = parse(context);
             context.expect(TokenType.RIGHT_PAREN);
-            return new Group(group);
+            return new Group(context.getCurrentBody().getScope(), group);
         }
 
         return null;
@@ -138,19 +153,24 @@ public abstract class Expression
             context.expect(TokenType.RIGHT_BRACE);
         }
 
-        return new Instantiation(clazz, fields);
+        return new Instantiation(context.getCurrentBody().getScope(), clazz, fields);
     }
 
     private static Expression member(ParserContext context, Token callee) throws SyntaxException
     {
         Token name = context.expect(TokenType.NAME);
 
+        if (!context.getCurrentBody().getScope().contains(name.getValue()))
+        {
+            throw new SyntaxException(String.format("class '%s' does not have the member '%s'", callee.getValue(), name.getValue()), name);
+        }
+
         if (context.has(TokenType.LEFT_PAREN))
         {
             return method(context, callee, name);
         }
 
-        return new FieldReference(callee, name);
+        return new FieldReference(context.getCurrentBody().getScope(), callee, name);
     }
 
     private static Expression method(ParserContext context, Token callee, Token name) throws SyntaxException
@@ -166,7 +186,7 @@ public abstract class Expression
             context.expect(TokenType.RIGHT_PAREN);
         }
 
-        return new FunctionCall(callee, name, arguments);
+        return new FunctionCall(context.getCurrentBody().getScope(), callee, name, arguments);
     }
 
     public abstract void print();
@@ -183,8 +203,9 @@ public abstract class Expression
         private final Operator operator;
         private final Expression right;
 
-        private Binary(Expression left, Operator operator, Expression right)
+        private Binary(Scope scope, Expression left, Operator operator, Expression right)
         {
+            super(scope);
             this.left = left;
             this.operator = operator;
             this.right = right;
@@ -243,6 +264,13 @@ public abstract class Expression
             getLeft().writeTo(out);
             getRight().writeTo(out);
         }
+
+        @Override
+        public void resolve(Resolver resolver) throws SyntaxException
+        {
+            resolver.resolve(getScope(), left);
+            resolver.resolve(getScope(), right);
+        }
     }
 
     public static final class FieldReference extends Expression
@@ -250,8 +278,9 @@ public abstract class Expression
         private final Token callee;
         private final Token name;
 
-        private FieldReference(Token callee, Token name)
+        private FieldReference(Scope scope, Token callee, Token name)
         {
+            super(scope);
             this.callee = callee;
             this.name = name;
         }
@@ -279,6 +308,13 @@ public abstract class Expression
             getCallee().writeTo(out);
             getName().writeTo(out);
         }
+
+        @Override
+        public void resolve(Resolver resolver) throws SyntaxException
+        {
+            resolver.resolve(getScope(), callee);
+            resolver.resolve(getScope(), name);
+        }
     }
 
     public static final class FunctionCall extends Expression
@@ -287,8 +323,9 @@ public abstract class Expression
         private final Token function;
         private final List<Expression> arguments;
 
-        private FunctionCall(Token callee, Token name, List<Expression> arguments)
+        private FunctionCall(Scope scope, Token callee, Token name, List<Expression> arguments)
         {
+            super(scope);
             this.callee = callee;
             this.function = name;
             this.arguments = arguments;
@@ -334,14 +371,27 @@ public abstract class Expression
                 arg.writeTo(out);
             }
         }
+
+        @Override
+        public void resolve(Resolver resolver) throws SyntaxException
+        {
+            resolver.resolve(getScope(), callee);
+            resolver.resolve(getScope(), function);
+
+            for (Expression arg : arguments)
+            {
+                resolver.resolve(getScope(), arg);
+            }
+        }
     }
 
     public static final class Group extends Expression
     {
         private Expression inner;
 
-        private Group(Expression inner)
+        private Group(Scope scope, Expression inner)
         {
+            super(scope);
             this.inner = inner;
         }
 
@@ -360,19 +410,27 @@ public abstract class Expression
             super.writeTo(out);
             inner.writeTo(out);
         }
+
+        @Override
+        public void resolve(Resolver resolver) throws SyntaxException
+        {
+            resolver.resolve(getScope(), inner);
+        }
     }
 
     public static final class Literal extends Expression
     {
         private Token token;
 
-        private Literal(Token token)
+        private Literal(Scope scope, Token token)
         {
+            super(scope);
             this.token = token;
         }
 
-        private Literal(ParserContext context)
+        private Literal(Scope scope, ParserContext context)
         {
+            super(scope);
             this.token = context.getIterator().next();
         }
 
@@ -393,6 +451,12 @@ public abstract class Expression
             super.writeTo(out);
             token.writeTo(out);
         }
+
+        @Override
+        public void resolve(Resolver resolver) throws SyntaxException
+        {
+            resolver.resolve(getScope(), token);
+        }
     }
 
     public static final class Instantiation extends Expression
@@ -400,8 +464,9 @@ public abstract class Expression
         private final Token className;
         private final Map<Token, Expression> fields;
 
-        private Instantiation(Token className, Map<Token, Expression> fields)
+        private Instantiation(Scope scope, Token className, Map<Token, Expression> fields)
         {
+            super(scope);
             this.className = className;
             this.fields = fields;
         }
@@ -435,6 +500,17 @@ public abstract class Expression
                 getFields().get(token).writeTo(out);
             }
         }
+
+        @Override
+        public void resolve(Resolver resolver) throws SyntaxException
+        {
+            resolver.resolve(getScope(), className);
+
+            for (Expression field : fields.values())
+            {
+                resolver.resolve(getScope(), field);
+            }
+        }
     }
 
     public static final class Unary extends Expression
@@ -442,8 +518,9 @@ public abstract class Expression
         private final Operator operator;
         private final Expression right;
 
-        private Unary(Operator operator, Expression right)
+        private Unary(Scope scope, Operator operator, Expression right)
         {
+            super(scope);
             this.operator = operator;
             this.right = right;
         }
@@ -480,6 +557,12 @@ public abstract class Expression
             super.writeTo(out);
             getOperator().writeTo(out);
             getRight().writeTo(out);
+        }
+
+        @Override
+        public void resolve(Resolver resolver) throws SyntaxException
+        {
+            resolver.resolve(getScope(), right);
         }
     }
 }

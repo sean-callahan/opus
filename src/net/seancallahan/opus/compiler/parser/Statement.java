@@ -3,6 +3,8 @@ package net.seancallahan.opus.compiler.parser;
 import net.seancallahan.opus.compiler.Scope;
 import net.seancallahan.opus.compiler.Token;
 import net.seancallahan.opus.compiler.TokenType;
+import net.seancallahan.opus.compiler.semantics.Resolvable;
+import net.seancallahan.opus.compiler.semantics.Resolver;
 import net.seancallahan.opus.lang.Declaration;
 import net.seancallahan.opus.lang.Type;
 import net.seancallahan.opus.lang.Variable;
@@ -10,8 +12,20 @@ import net.seancallahan.opus.lang.Variable;
 import java.io.DataOutputStream;
 import java.io.IOException;
 
-public abstract class Statement
+public abstract class Statement implements Resolvable
 {
+    private final Body parent;
+
+    public Statement(Body parent)
+    {
+        this.parent = parent;
+    }
+
+    public Body getParent()
+    {
+        return parent;
+    }
+
     public static Statement parse(ParserContext context) throws SyntaxException
     {
         Token next = context.getIterator().next();
@@ -43,9 +57,9 @@ public abstract class Statement
 
         context.expect(TokenType.TERMINATOR);
 
-        VariableDeclaration declaration = new VariableDeclaration(name, type);
+        VariableDeclaration declaration = new VariableDeclaration(context.getCurrentBody(), name, type);
 
-        context.getCurrentScope().add(declaration);
+        context.getCurrentBody().getScope().add(declaration);
 
         return declaration;
     }
@@ -64,9 +78,9 @@ public abstract class Statement
 
         context.expect(TokenType.TERMINATOR);
 
-        VariableDeclaration declaration = new VariableDeclaration(name, type, expression);
+        VariableDeclaration declaration = new VariableDeclaration(context.getCurrentBody(), name, type, expression);
 
-        context.getCurrentScope().add(declaration);
+        context.getCurrentBody().getScope().add(declaration);
 
         return declaration;
     }
@@ -77,7 +91,7 @@ public abstract class Statement
 
         Body body = parseBody(context);
 
-        return new If(condition, body);
+        return new If(context.getCurrentBody(), condition, body);
     }
 
     private static For parseFor(ParserContext context) throws SyntaxException
@@ -87,14 +101,14 @@ public abstract class Statement
             // "for"ever loop
             Body body = parseBody(context);
 
-            return new For(body);
+            return new For(context.getCurrentBody(), body);
         }
 
         Expression condition = Expression.parse(context);
 
         Body body = parseBody(context);
 
-        return new For(condition, body);
+        return new For(context.getCurrentBody(), condition, body);
     }
 
     public static Constant parseConstant(ParserContext context, Token name) throws SyntaxException
@@ -109,20 +123,20 @@ public abstract class Statement
 
         context.expect(TokenType.TERMINATOR);
 
-        return new Constant(name, type, value);
+        return new Constant(context.getCurrentBody(), name, type, value);
     }
 
     public static Import parseImport(ParserContext context) throws SyntaxException
     {
         Token path = context.expect(TokenType.LITERAL);
-        return new Import(path);
+        return new Import(context.getCurrentBody(), path);
     }
 
     private static Return parseReturn(ParserContext context) throws SyntaxException
     {
         // TODO: multi returns
         Expression value = Expression.parse(context);
-        return new Return(value);
+        return new Return(context.getCurrentBody(), value);
     }
 
     private static Statement simple(ParserContext context, Token name) throws SyntaxException
@@ -137,7 +151,7 @@ public abstract class Statement
                 }
                 Expression value = Expression.parse(context);
                 context.expect(TokenType.TERMINATOR);
-                return new Assignment(name, value);
+                return new Assignment(context.getCurrentBody(), name, value);
             case DECLARE:
                 return parseVariableDeclaration(context, name);
             case DEFINE:
@@ -153,18 +167,18 @@ public abstract class Statement
     {
         context.expect(TokenType.LEFT_BRACE);
 
-        Scope parent = context.getCurrentScope();
+        Body parent = context.getCurrentBody();
 
-        Body body = new Body(parent.copy());
+        Body body = new Body(parent.getScope().copy());
 
-        context.setCurrentScope(body.getScope());
+        context.setCurrentBody(body);
 
         while (!context.has(TokenType.RIGHT_BRACE))
         {
             body.getStatements().add(Statement.parse(context));
         }
 
-        context.setCurrentScope(parent);
+        context.setCurrentBody(parent);
 
         return body;
     }
@@ -176,7 +190,7 @@ public abstract class Statement
 
     private static Declaration getPreviousDeclaration(ParserContext context, Token name)
     {
-        Scope scope = context.getCurrentScope();
+        Scope scope = context.getCurrentBody().getScope();
         if (scope == null)
         {
             return null;
@@ -189,13 +203,20 @@ public abstract class Statement
         out.writeUTF(getClass().getSimpleName());
     }
 
+    @Override
+    public void resolve(Resolver resolver) throws SyntaxException
+    {
+
+    }
+
     public static class Assignment extends Statement
     {
         private Token name;
         private Expression expression;
 
-        private Assignment(Token name, Expression expression)
+        private Assignment(Body parent, Token name, Expression expression)
         {
+            super(parent);
             this.name = name;
             this.expression = expression;
         }
@@ -217,6 +238,13 @@ public abstract class Statement
             name.writeTo(out);
             expression.writeTo(out);
         }
+
+        @Override
+        public void resolve(Resolver resolver) throws SyntaxException
+        {
+            resolver.resolve(getParent().getScope(), name);
+            resolver.resolve(getParent().getScope(), expression);
+        }
     }
 
     public static class Constant extends Statement implements Declaration
@@ -225,8 +253,9 @@ public abstract class Statement
         private final Type type;
         private final Expression value;
 
-        private Constant(Token name, Type type, Expression value)
+        private Constant(Body parent, Token name, Type type, Expression value)
         {
+            super(parent);
             this.name = name;
             this.type = type;
             this.value = value;
@@ -247,14 +276,22 @@ public abstract class Statement
         {
             return name;
         }
+
+        @Override
+        public void resolve(Resolver resolver) throws SyntaxException
+        {
+            resolver.resolve(getParent().getScope(), name);
+            resolver.resolve(getParent().getScope(), value);
+        }
     }
 
     public static class Return extends Statement
     {
         private Expression expression;
 
-        private Return(Expression expression)
+        private Return(Body parent, Expression expression)
         {
+            super(parent);
             this.expression = expression;
         }
 
@@ -262,14 +299,21 @@ public abstract class Statement
         {
             return expression;
         }
+
+        @Override
+        public void resolve(Resolver resolver) throws SyntaxException
+        {
+            resolver.resolve(getParent().getScope(), expression);
+        }
     }
 
     public static class Import extends Statement implements Declaration
     {
         private final Token path;
 
-        private Import(Token path)
+        private Import(Body parent, Token path)
         {
+            super(parent);
             this.path = path;
         }
 
@@ -292,19 +336,22 @@ public abstract class Statement
         private Statement counter;
         private Body body;
 
-        private For(Body body)
+        private For(Body parent, Body body)
         {
+            super(parent);
             this.body = body;
         }
 
-        private For(Expression condition, Body body)
+        private For(Body parent, Expression condition, Body body)
         {
+            super(parent);
             this.condition = condition;
             this.body = body;
         }
 
-        protected For(Assignment index, Expression condition, Statement counter, Body body)
+        protected For(Body parent, Assignment index, Expression condition, Statement counter, Body body)
         {
+            super(parent);
             this.index = index;
             this.condition = condition;
             this.counter = counter;
@@ -330,6 +377,24 @@ public abstract class Statement
         {
             return body;
         }
+
+        @Override
+        public void resolve(Resolver resolver) throws SyntaxException
+        {
+            if (index != null)
+            {
+                index.resolve(resolver);
+            }
+            if (condition != null)
+            {
+                condition.resolve(resolver);
+            }
+            if (counter != null)
+            {
+                counter.resolve(resolver);
+            }
+            // TODO: body
+        }
     }
 
     public static class If extends Statement
@@ -337,8 +402,9 @@ public abstract class Statement
         private Expression condition;
         private Body body;
 
-        private If(Expression condition, Body body)
+        private If(Body parent, Expression condition, Body body)
         {
+            super(parent);
             this.condition = condition;
             this.body = body;
         }
@@ -352,6 +418,13 @@ public abstract class Statement
         {
             return body;
         }
+
+        @Override
+        public void resolve(Resolver resolver) throws SyntaxException
+        {
+            resolver.resolve(getParent().getScope(), condition);
+            // TODO: body
+        }
     }
 
     public static class VariableDeclaration extends Statement implements Declaration
@@ -359,13 +432,14 @@ public abstract class Statement
         private final Variable variable;
         private final Expression expression;
 
-        private VariableDeclaration(Token name, Type type)
+        private VariableDeclaration(Body parent, Token name, Type type)
         {
-            this(name, type, null);
+            this(parent, name, type, null);
         }
 
-        private VariableDeclaration(Token name, Type type, Expression expression)
+        private VariableDeclaration(Body parent, Token name, Type type, Expression expression)
         {
+            super(parent);
             this.variable = new Variable(name, type);
             this.expression = expression;
         }
@@ -384,6 +458,12 @@ public abstract class Statement
         public Expression getExpression()
         {
             return expression;
+        }
+
+        @Override
+        public void resolve(Resolver resolver) throws SyntaxException
+        {
+            resolver.resolve(getParent().getScope(), expression);
         }
     }
 }

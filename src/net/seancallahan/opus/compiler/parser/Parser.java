@@ -163,9 +163,7 @@ public class Parser
     private static void parseFunction(ParserContext context, Function func) throws CompilerException {
         context.setState(ParserContext.State.FUNCTION);
 
-        Scope previousScope = context.getCurrentScope();
-
-        context.setCurrentScope(func.getScope());
+        context.setCurrentBody(func.getBody());
 
         parseSignature(context, func.getParameters(), func.getReturns());
 
@@ -175,7 +173,7 @@ public class Parser
 
         context.expect(TokenType.RIGHT_BRACE);
 
-        context.setCurrentScope(previousScope);
+        context.setCurrentBody(null);
 
         context.setState(ParserContext.State.NONE);
     }

@@ -1,7 +1,6 @@
 package net.seancallahan.opus.compiler.parser;
 
 import net.seancallahan.opus.compiler.Operator;
-import net.seancallahan.opus.compiler.Scope;
 import net.seancallahan.opus.compiler.SourceFile;
 import net.seancallahan.opus.compiler.Token;
 import net.seancallahan.opus.compiler.TokenType;
@@ -15,8 +14,8 @@ public class ParserContext
     private final Parser parser;
     private final PeekableIterator<Token> iterator;
 
-    private Scope currentScope;
     private State state = State.NONE;
+    private Body currentBody;
 
     public ParserContext(SourceFile file, Parser parser, List<Token> tokens)
     {
@@ -45,14 +44,14 @@ public class ParserContext
         this.state = state;
     }
 
-    public Scope getCurrentScope()
+    public Body getCurrentBody()
     {
-        return currentScope;
+        return currentBody;
     }
 
-    public void setCurrentScope(Scope currentScope)
+    public void setCurrentBody(Body currentBody)
     {
-        this.currentScope = currentScope;
+        this.currentBody = currentBody;
     }
 
     public PeekableIterator<Token> getIterator()

@@ -2,11 +2,14 @@ package net.seancallahan.opus.compiler;
 
 import net.seancallahan.opus.compiler.jvm.ClassFile;
 import net.seancallahan.opus.compiler.parser.Parser;
-import net.seancallahan.opus.compiler.semantics.TypeAnalysis;
-import net.seancallahan.opus.lang.Declaration;
+import net.seancallahan.opus.compiler.semantics.ReferenceResolver;
 import net.seancallahan.opus.lang.Class;
+import net.seancallahan.opus.lang.Declaration;
 
-import java.io.*;
+import java.io.DataOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.List;
 
 public class SourceFile
@@ -41,7 +44,8 @@ public class SourceFile
         this.parser = new Parser(this, tokens, new Scope(null));
         this.parser.parse();
 
-        new TypeAnalysis(parser);
+        ReferenceResolver referenceResolver = new ReferenceResolver(parser);
+        referenceResolver.resolve();
     }
 
     public void compile() throws IOException, CompilerException

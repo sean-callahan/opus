@@ -14,6 +14,8 @@ public final class Method extends Function
     {
         super(name, global);
         this.parentName = parentName;
+
+        getScope().put("this", null);
     }
 
     public Class getParent()
@@ -24,17 +26,18 @@ public final class Method extends Function
     public void setParent(Class parent)
     {
         this.parent = parent;
+        getScope().put("this", parent);
     }
 
-    public String getParentName()
+    public Token getParentName()
     {
-        return parentName.getValue();
+        return parentName;
     }
 
     @Override
     public String toString()
     {
-        return String.format("%s.%s", getParentName(), super.toString());
+        return String.format("%s.%s", getParentName().getValue(), super.toString());
     }
 
 }

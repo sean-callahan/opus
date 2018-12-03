@@ -38,14 +38,24 @@ public class Scope
         return members.containsKey(name) || (parent != null && parent.members.containsKey(name));
     }
 
-    public boolean add(Declaration declaration)
+    public void put(String key, Declaration declaration)
     {
-        if (members.containsKey(declaration.getName().getValue()))
+        members.put(key, declaration);
+    }
+
+    public boolean add(String key, Declaration declaration)
+    {
+        if (members.containsKey(key))
         {
             return false;
         }
-        members.put(declaration.getName().getValue(), declaration);
+        members.put(key, declaration);
         return true;
+    }
+
+    public boolean add(Declaration declaration)
+    {
+        return add(declaration.getName().getValue(), declaration);
     }
 
     public Scope copy()
