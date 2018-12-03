@@ -142,8 +142,10 @@ public abstract class Statement
                 return parseVariableDeclaration(context, name);
             case DEFINE:
                 return parseVariableDefine(context, name);
+            case DECLARE_GLOBAL:
+                throw new UnsupportedOperationException("cannot declare a global type from within a function");
             default:
-                return null;
+                throw new UnsupportedOperationException(name.getValue() + " unimplemented");
         }
     }
 

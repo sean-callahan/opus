@@ -16,6 +16,7 @@ public class ParserContext
     private final PeekableIterator<Token> iterator;
 
     private Scope currentScope;
+    private State state = State.NONE;
 
     public ParserContext(SourceFile file, Parser parser, List<Token> tokens)
     {
@@ -32,6 +33,16 @@ public class ParserContext
     public Parser getParser()
     {
         return parser;
+    }
+
+    public State getState()
+    {
+        return state;
+    }
+
+    public void setState(State state)
+    {
+        this.state = state;
     }
 
     public Scope getCurrentScope()
@@ -103,6 +114,13 @@ public class ParserContext
         }
         getIterator().skip(1);
         return true;
+    }
+
+    public enum State
+    {
+        NONE,
+        CLASS,
+        FUNCTION,
     }
 
 }

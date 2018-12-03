@@ -100,6 +100,11 @@ public class Parser
 
     private void name(Token name) throws CompilerException
     {
+        if (context.getState() != ParserContext.State.NONE)
+        {
+            throw new SyntaxException("cannot declare a new type from within a function or class");
+        }
+
         if (context.has(TokenType.DECLARE_GLOBAL))
         {
             declare(name);
@@ -156,6 +161,8 @@ public class Parser
     }
 
     private static void parseFunction(ParserContext context, Function func) throws CompilerException {
+        context.setState(ParserContext.State.FUNCTION);
+
         Scope previousScope = context.getCurrentScope();
 
         context.setCurrentScope(func.getScope());
@@ -169,6 +176,8 @@ public class Parser
         context.expect(TokenType.RIGHT_BRACE);
 
         context.setCurrentScope(previousScope);
+
+        context.setState(ParserContext.State.NONE);
     }
 
     private static void parseSignature(ParserContext context, List<Variable> params, List<Variable> returns) throws SyntaxException
@@ -230,11 +239,15 @@ public class Parser
 
     private static void parseClass(ParserContext context, Class clazz) throws SyntaxException
     {
+        context.setState(ParserContext.State.CLASS);
+
         context.expect(TokenType.LEFT_BRACE);
 
         parseFields(context, clazz.getFields());
 
         context.expect(TokenType.RIGHT_BRACE);
+
+        context.setState(ParserContext.State.NONE);
     }
 
     private static void parseFields(ParserContext context, List<Variable> fields) throws SyntaxException
