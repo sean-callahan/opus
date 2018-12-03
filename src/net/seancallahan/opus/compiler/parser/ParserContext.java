@@ -1,6 +1,10 @@
 package net.seancallahan.opus.compiler.parser;
 
-import net.seancallahan.opus.compiler.*;
+import net.seancallahan.opus.compiler.Operator;
+import net.seancallahan.opus.compiler.Scope;
+import net.seancallahan.opus.compiler.SourceFile;
+import net.seancallahan.opus.compiler.Token;
+import net.seancallahan.opus.compiler.TokenType;
 import net.seancallahan.opus.util.PeekableIterator;
 
 import java.util.List;
@@ -11,7 +15,7 @@ public class ParserContext
     private final Parser parser;
     private final PeekableIterator<Token> iterator;
 
-    private Function currentFunction;
+    private Scope currentScope;
 
     public ParserContext(SourceFile file, Parser parser, List<Token> tokens)
     {
@@ -30,14 +34,14 @@ public class ParserContext
         return parser;
     }
 
-    public Function getCurrentFunction()
+    public Scope getCurrentScope()
     {
-        return currentFunction;
+        return currentScope;
     }
 
-    public void setCurrentFunction(Function currentFunction)
+    public void setCurrentScope(Scope currentScope)
     {
-        this.currentFunction = currentFunction;
+        this.currentScope = currentScope;
     }
 
     public PeekableIterator<Token> getIterator()

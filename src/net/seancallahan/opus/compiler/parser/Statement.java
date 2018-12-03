@@ -1,6 +1,6 @@
 package net.seancallahan.opus.compiler.parser;
 
-import net.seancallahan.opus.compiler.Function;
+import net.seancallahan.opus.compiler.Scope;
 import net.seancallahan.opus.compiler.Token;
 import net.seancallahan.opus.compiler.TokenType;
 import net.seancallahan.opus.lang.Declaration;
@@ -33,7 +33,11 @@ public abstract class Statement
 
     private static VariableDeclaration parseVariableDeclaration(ParserContext context, Token name) throws SyntaxException
     {
-        checkForDuplicates(context, name);
+        Declaration previous = getPreviousDeclaration(context, name);
+        if (previous != null)
+        {
+            throw new SyntaxException("symbol already declared", previous.getName());
+        }
 
         Type type = Parser.parseType(context);
 
@@ -41,14 +45,18 @@ public abstract class Statement
 
         VariableDeclaration declaration = new VariableDeclaration(name, type);
 
-        context.getCurrentFunction().getScope().add(declaration);
+        context.getCurrentScope().add(declaration);
 
         return declaration;
     }
 
     private static VariableDeclaration parseVariableDefine(ParserContext context, Token name) throws SyntaxException
     {
-        checkForDuplicates(context, name);
+        Declaration previous = getPreviousDeclaration(context, name);
+        if (previous != null)
+        {
+            throw new SyntaxException("symbol already declared", previous.getName());
+        }
 
         Expression expression = Expression.parse(context);
 
@@ -58,7 +66,7 @@ public abstract class Statement
 
         VariableDeclaration declaration = new VariableDeclaration(name, type, expression);
 
-        context.getCurrentFunction().getScope().add(declaration);
+        context.getCurrentScope().add(declaration);
 
         return declaration;
     }
@@ -67,44 +75,24 @@ public abstract class Statement
     {
         Expression condition = Expression.parse(context);
 
-        context.expect(TokenType.LEFT_BRACE);
-
-        Body body = new Body(context.getCurrentFunction().getScope().copy());
-
-        while (!context.matches(TokenType.RIGHT_BRACE))
-        {
-            body.getStatements().add(Statement.parse(context));
-        }
+        Body body = parseBody(context);
 
         return new If(condition, body);
     }
 
     private static For parseFor(ParserContext context) throws SyntaxException
     {
-        if (context.has(TokenType.LEFT_BRACE))
+        if (context.matches(TokenType.LEFT_BRACE))
         {
             // "for"ever loop
-
-            Body body = new Body(context.getCurrentFunction().getScope().copy());
-
-            while (!context.matches(TokenType.RIGHT_BRACE))
-            {
-                body.getStatements().add(Statement.parse(context));
-            }
+            Body body = parseBody(context);
 
             return new For(body);
         }
 
         Expression condition = Expression.parse(context);
 
-        context.expect(TokenType.LEFT_BRACE);
-
-        Body body = new Body(context.getCurrentFunction().getScope().copy());
-
-        while (!context.matches(TokenType.RIGHT_BRACE))
-        {
-            body.getStatements().add(Statement.parse(context));
-        }
+        Body body = parseBody(context);
 
         return new For(condition, body);
     }
@@ -143,6 +131,10 @@ public abstract class Statement
         switch (next.getType())
         {
             case ASSIGN:
+                if (!symbolExists(context, name))
+                {
+                    throw new SyntaxException("cannot assign to undeclared variable", name);
+                }
                 Expression value = Expression.parse(context);
                 context.expect(TokenType.TERMINATOR);
                 return new Assignment(name, value);
@@ -155,20 +147,39 @@ public abstract class Statement
         }
     }
 
-    private static void checkForDuplicates(ParserContext context, Token name) throws SyntaxException
+    private static Body parseBody(ParserContext context) throws SyntaxException
     {
-        Function function = context.getCurrentFunction();
+        context.expect(TokenType.LEFT_BRACE);
 
-        if (function == null)
+        Scope parent = context.getCurrentScope();
+
+        Body body = new Body(parent.copy());
+
+        context.setCurrentScope(body.getScope());
+
+        while (!context.has(TokenType.RIGHT_BRACE))
         {
-            return;
+            body.getStatements().add(Statement.parse(context));
         }
 
-        Declaration declaration = function.getScope().get(name.getValue());
-        if (declaration != null)
+        context.setCurrentScope(parent);
+
+        return body;
+    }
+
+    private static boolean symbolExists(ParserContext context, Token name)
+    {
+        return getPreviousDeclaration(context, name) != null;
+    }
+
+    private static Declaration getPreviousDeclaration(ParserContext context, Token name)
+    {
+        Scope scope = context.getCurrentScope();
+        if (scope == null)
         {
-            throw new SyntaxException(String.format("%s already declared", name), declaration.getName());
+            return null;
         }
+        return scope.get(name.getValue());
     }
 
     public void writeTo(DataOutputStream out) throws IOException

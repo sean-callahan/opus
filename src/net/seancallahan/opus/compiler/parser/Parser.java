@@ -1,8 +1,16 @@
 package net.seancallahan.opus.compiler.parser;
 
-import net.seancallahan.opus.compiler.*;
-import net.seancallahan.opus.lang.*;
+import net.seancallahan.opus.compiler.CompilerException;
+import net.seancallahan.opus.compiler.Function;
+import net.seancallahan.opus.compiler.Scope;
+import net.seancallahan.opus.compiler.SourceFile;
+import net.seancallahan.opus.compiler.Token;
+import net.seancallahan.opus.compiler.TokenType;
 import net.seancallahan.opus.lang.Class;
+import net.seancallahan.opus.lang.Declaration;
+import net.seancallahan.opus.lang.Method;
+import net.seancallahan.opus.lang.Type;
+import net.seancallahan.opus.lang.Variable;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -148,7 +156,9 @@ public class Parser
     }
 
     private static void parseFunction(ParserContext context, Function func) throws CompilerException {
-        context.setCurrentFunction(func);
+        Scope previousScope = context.getCurrentScope();
+
+        context.setCurrentScope(func.getScope());
 
         parseSignature(context, func.getParameters(), func.getReturns());
 
@@ -158,7 +168,7 @@ public class Parser
 
         context.expect(TokenType.RIGHT_BRACE);
 
-        context.setCurrentFunction(null);
+        context.setCurrentScope(previousScope);
     }
 
     private static void parseSignature(ParserContext context, List<Variable> params, List<Variable> returns) throws SyntaxException
