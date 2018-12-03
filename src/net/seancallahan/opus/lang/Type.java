@@ -2,9 +2,9 @@ package net.seancallahan.opus.lang;
 
 import net.seancallahan.opus.compiler.Token;
 
-public class Type implements Declaration
+public class Type
 {
-    private final Token name;
+    private final String name;
 
     private final boolean primitive;
     private static final String[] primitives = new String[]
@@ -15,13 +15,18 @@ public class Type implements Declaration
 
     public Type(Token name)
     {
+        this(name.getValue());
+    }
+
+    public Type(String name)
+    {
         this.name = name;
 
         boolean primitive = false;
 
         for (String primitiveName : primitives)
         {
-            if (primitiveName.equals(name.getValue()))
+            if (primitiveName.equals(name))
             {
                 primitive = true;
                 break;
@@ -31,7 +36,7 @@ public class Type implements Declaration
         this.primitive = primitive;
     }
 
-    public Token getName()
+    public String getName()
     {
         return name;
     }
@@ -39,7 +44,7 @@ public class Type implements Declaration
     @Override
     public String toString()
     {
-        return name.getValue();
+        return name;
     }
 
     public boolean isPrimitive()

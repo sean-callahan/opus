@@ -39,7 +39,7 @@ public class Descriptor
 
     public static Descriptor from(Variable field)
     {
-        return new Descriptor(field, findTerm(field.getType().getName().getValue()));
+        return new Descriptor(field, findTerm(field.getType().getName()));
     }
 
     public static Descriptor from(Function function)
@@ -50,7 +50,7 @@ public class Descriptor
 
         for (Variable param : function.getParameters())
         {
-            b.append(findTerm(param.getType().getName().getValue()));
+            b.append(findTerm(param.getType().getName()));
         }
 
         b.append(')');
@@ -64,7 +64,7 @@ public class Descriptor
         if (function.getReturns().size() == 1)
         {
             Type returns = function.getReturns().get(0).getType();
-            b.append(findTerm(returns.getName().getValue()));
+            b.append(findTerm(returns.getName()));
         }
         else
         {

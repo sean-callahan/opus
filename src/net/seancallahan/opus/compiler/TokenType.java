@@ -48,7 +48,7 @@ public enum TokenType
         {
             return text.get(this);
         }
-        return super.toString();
+        return super.toString().toLowerCase();
     }
 
     private static final HashMap<TokenType, String> text = new HashMap<>();

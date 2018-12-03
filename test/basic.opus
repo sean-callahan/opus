@@ -3,7 +3,6 @@ package basic;
 Basic :: {}
 
 Basic.Foo :: () -> s32 {
-    a: s32;
-    a = 5;
+    a := 5;
     return a;
 }

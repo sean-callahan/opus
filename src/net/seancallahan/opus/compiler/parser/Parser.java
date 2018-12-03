@@ -256,10 +256,52 @@ public class Parser
                 context.expect(TokenType.RIGHT_BRACKET);
                 Token name = context.expect(TokenType.NAME);
                 // TODO: fix arrays
-                return new Type(null);
+                return new Type("");
             default:
                 throw new SyntaxException(String.format("expecting type got %s", next), next);
         }
+    }
+
+    public static Type parseType(Expression expression)
+    {
+        // TODO: find the type of complex expressions
+        if (!(expression instanceof Expression.Literal))
+        {
+            throw new UnsupportedOperationException("types can only be inferred from literals at the moment");
+        }
+
+        Expression.Literal lit = (Expression.Literal) expression;
+
+        String value = lit.getToken().getValue();
+
+        if (value.equals("true") || value.equals("false"))
+        {
+            return new Type("bool");
+        }
+
+        // NOTE: there might be a better way to do this rather than just ignoring failures
+        try
+        {
+            Integer.parseInt(value);
+            return new Type("s32");
+        }
+        catch (NumberFormatException ignored) { }
+
+        try
+        {
+            Long.parseLong(value);
+            return new Type("s64");
+        }
+        catch (NumberFormatException ignored) { }
+
+        try
+        {
+            Float.parseFloat(value);
+            return new Type("f32");
+        }
+        catch (NumberFormatException ignored) { }
+
+        return new Type("string");
     }
 
     public Map<String, Declaration> getDeclarations()

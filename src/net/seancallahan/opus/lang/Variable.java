@@ -33,7 +33,7 @@ public final class Variable implements Declaration
     {
         if (name == null)
         {
-            return type.getName().getValue();
+            return type.getName();
         }
         return name.getValue() + " " + type;
     }

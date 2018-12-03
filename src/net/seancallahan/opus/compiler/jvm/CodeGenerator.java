@@ -93,7 +93,7 @@ public class CodeGenerator
         Instruction store = null;
 
         // push default value
-        switch (type.getName().getValue())
+        switch (type.getName())
         {
             case "s8":
             case "u8":

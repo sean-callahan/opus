@@ -46,6 +46,23 @@ public abstract class Statement
         return declaration;
     }
 
+    private static VariableDeclaration parseVariableDefine(ParserContext context, Token name) throws SyntaxException
+    {
+        checkForDuplicates(context, name);
+
+        Expression expression = Expression.parse(context);
+
+        Type type = Parser.parseType(expression);
+
+        context.expect(TokenType.TERMINATOR);
+
+        VariableDeclaration declaration = new VariableDeclaration(name, type, expression);
+
+        context.getCurrentFunction().getScope().add(declaration);
+
+        return declaration;
+    }
+
     private static If parseIf(ParserContext context) throws SyntaxException
     {
         Expression condition = Expression.parse(context);
@@ -64,6 +81,20 @@ public abstract class Statement
 
     private static For parseFor(ParserContext context) throws SyntaxException
     {
+        if (context.has(TokenType.LEFT_BRACE))
+        {
+            // "for"ever loop
+
+            Body body = new Body(context.getCurrentFunction().getScope().copy());
+
+            while (!context.matches(TokenType.RIGHT_BRACE))
+            {
+                body.getStatements().add(Statement.parse(context));
+            }
+
+            return new For(body);
+        }
+
         Expression condition = Expression.parse(context);
 
         context.expect(TokenType.LEFT_BRACE);
@@ -117,6 +148,8 @@ public abstract class Statement
                 return new Assignment(name, value);
             case DECLARE:
                 return parseVariableDeclaration(context, name);
+            case DEFINE:
+                return parseVariableDefine(context, name);
             default:
                 return null;
         }
@@ -148,7 +181,7 @@ public abstract class Statement
         private Token name;
         private Expression expression;
 
-        public Assignment(Token name, Expression expression)
+        private Assignment(Token name, Expression expression)
         {
             this.name = name;
             this.expression = expression;
@@ -179,11 +212,21 @@ public abstract class Statement
         private final Type type;
         private final Expression value;
 
-        Constant(Token name, Type type, Expression value)
+        private Constant(Token name, Type type, Expression value)
         {
             this.name = name;
             this.type = type;
             this.value = value;
+        }
+
+        public Type getType()
+        {
+            return type;
+        }
+
+        public Expression getValue()
+        {
+            return value;
         }
 
         @Override
@@ -197,7 +240,7 @@ public abstract class Statement
     {
         private Expression expression;
 
-        Return(Expression expression)
+        private Return(Expression expression)
         {
             this.expression = expression;
         }
@@ -212,7 +255,7 @@ public abstract class Statement
     {
         private final Token path;
 
-        Import(Token path)
+        private Import(Token path)
         {
             this.path = path;
         }
@@ -236,12 +279,12 @@ public abstract class Statement
         private Statement counter;
         private Body body;
 
-        protected For(Body body)
+        private For(Body body)
         {
             this.body = body;
         }
 
-        For(Expression condition, Body body)
+        private For(Expression condition, Body body)
         {
             this.condition = condition;
             this.body = body;
@@ -281,7 +324,7 @@ public abstract class Statement
         private Expression condition;
         private Body body;
 
-        If(Expression condition, Body body)
+        private If(Expression condition, Body body)
         {
             this.condition = condition;
             this.body = body;
@@ -303,12 +346,12 @@ public abstract class Statement
         private final Variable variable;
         private final Expression expression;
 
-        VariableDeclaration(Token name, Type type)
+        private VariableDeclaration(Token name, Type type)
         {
             this(name, type, null);
         }
 
-        VariableDeclaration(Token name, Type type, Expression expression)
+        private VariableDeclaration(Token name, Type type, Expression expression)
         {
             this.variable = new Variable(name, type);
             this.expression = expression;
