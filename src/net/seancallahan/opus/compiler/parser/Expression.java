@@ -4,6 +4,8 @@ import net.seancallahan.opus.compiler.Operator;
 import net.seancallahan.opus.compiler.Token;
 import net.seancallahan.opus.compiler.TokenType;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -169,13 +171,19 @@ public abstract class Expression
 
     public abstract void print();
 
+    public void writeTo(DataOutputStream out) throws IOException
+    {
+        // NOTE: maybe use an enum to store expression types.
+        out.writeUTF(getClass().getName());
+    }
+
     public static final class Binary extends Expression
     {
         private final Expression left;
         private final Operator operator;
         private final Expression right;
 
-        public Binary(Expression left, Operator operator, Expression right)
+        private Binary(Expression left, Operator operator, Expression right)
         {
             this.left = left;
             this.operator = operator;
@@ -227,17 +235,35 @@ public abstract class Expression
             System.out.println();*/
         }
 
+        @Override
+        public void writeTo(DataOutputStream out) throws IOException
+        {
+            super.writeTo(out);
+            getOperator().writeTo(out);
+            getLeft().writeTo(out);
+            getRight().writeTo(out);
+        }
     }
 
-    public static class FieldReference extends Expression
+    public static final class FieldReference extends Expression
     {
         private final Token callee;
         private final Token name;
 
-        public FieldReference(Token callee, Token name)
+        private FieldReference(Token callee, Token name)
         {
             this.callee = callee;
             this.name = name;
+        }
+
+        public Token getCallee()
+        {
+            return callee;
+        }
+
+        public Token getName()
+        {
+            return name;
         }
 
         @Override
@@ -245,15 +271,23 @@ public abstract class Expression
         {
 
         }
+
+        @Override
+        public void writeTo(DataOutputStream out) throws IOException
+        {
+            super.writeTo(out);
+            getCallee().writeTo(out);
+            getName().writeTo(out);
+        }
     }
 
-    public static class FunctionCall extends Expression
+    public static final class FunctionCall extends Expression
     {
         private final Token callee;
         private final Token function;
         private final List<Expression> arguments;
 
-        public FunctionCall(Token callee, Token name, List<Expression> arguments)
+        private FunctionCall(Token callee, Token name, List<Expression> arguments)
         {
             this.callee = callee;
             this.function = name;
@@ -285,13 +319,28 @@ public abstract class Expression
         {
 
         }
+
+        @Override
+        public void writeTo(DataOutputStream out) throws IOException
+        {
+            super.writeTo(out);
+
+            getCallee().writeTo(out);
+            getFunction().writeTo(out);
+
+            out.writeShort(getArguments().size());
+            for (Expression arg : getArguments())
+            {
+                arg.writeTo(out);
+            }
+        }
     }
 
-    public static class Group extends Expression
+    public static final class Group extends Expression
     {
         private Expression inner;
 
-        public Group(Expression inner)
+        private Group(Expression inner)
         {
             this.inner = inner;
         }
@@ -305,18 +354,24 @@ public abstract class Expression
             }
         }
 
+        @Override
+        public void writeTo(DataOutputStream out) throws IOException
+        {
+            super.writeTo(out);
+            inner.writeTo(out);
+        }
     }
 
-    public static class Literal extends Expression
+    public static final class Literal extends Expression
     {
         private Token token;
 
-        public Literal(Token token)
+        private Literal(Token token)
         {
             this.token = token;
         }
 
-        public Literal(ParserContext context)
+        private Literal(ParserContext context)
         {
             this.token = context.getIterator().next();
         }
@@ -331,6 +386,13 @@ public abstract class Expression
         {
             System.out.print(token.getValue());
         }
+
+        @Override
+        public void writeTo(DataOutputStream out) throws IOException
+        {
+            super.writeTo(out);
+            token.writeTo(out);
+        }
     }
 
     public static final class Instantiation extends Expression
@@ -338,7 +400,7 @@ public abstract class Expression
         private final Token className;
         private final Map<Token, Expression> fields;
 
-        public Instantiation(Token className, Map<Token, Expression> fields)
+        private Instantiation(Token className, Map<Token, Expression> fields)
         {
             this.className = className;
             this.fields = fields;
@@ -359,6 +421,20 @@ public abstract class Expression
         {
 
         }
+
+        @Override
+        public void writeTo(DataOutputStream out) throws IOException
+        {
+            super.writeTo(out);
+            getClassName().writeTo(out);
+
+            out.writeShort(getFields().size());
+            for (Token token : getFields().keySet())
+            {
+                token.writeTo(out);
+                getFields().get(token).writeTo(out);
+            }
+        }
     }
 
     public static final class Unary extends Expression
@@ -366,7 +442,7 @@ public abstract class Expression
         private final Operator operator;
         private final Expression right;
 
-        public Unary(Operator operator, Expression right)
+        private Unary(Operator operator, Expression right)
         {
             this.operator = operator;
             this.right = right;
@@ -398,5 +474,12 @@ public abstract class Expression
             }
         }
 
+        @Override
+        public void writeTo(DataOutputStream out) throws IOException
+        {
+            super.writeTo(out);
+            getOperator().writeTo(out);
+            getRight().writeTo(out);
+        }
     }
 }

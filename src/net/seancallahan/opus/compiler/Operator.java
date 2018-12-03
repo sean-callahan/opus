@@ -1,5 +1,7 @@
 package net.seancallahan.opus.compiler;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.util.HashMap;
 
 public enum Operator
@@ -34,6 +36,11 @@ public enum Operator
             return text.get(this);
         }
         return super.toString();
+    }
+
+    public void writeTo(DataOutputStream out) throws IOException
+    {
+        out.writeByte(ordinal());
     }
 
     private static final HashMap<Operator, String> text = new HashMap<>();

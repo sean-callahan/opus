@@ -1,5 +1,8 @@
 package net.seancallahan.opus.compiler;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+
 public class Token
 {
     private final TokenType type;
@@ -51,6 +54,12 @@ public class Token
             out += "=" + getValue();
         }
         return out;
+    }
+
+    public void writeTo(DataOutputStream out) throws IOException
+    {
+        out.writeByte(type.ordinal());
+        out.writeUTF(value);
     }
 
 }
