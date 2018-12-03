@@ -34,6 +34,7 @@ public class Opus
     static
     {
         commands = Map.of(
+            "ast", new CommandAst(),
             "build", new CommandBuild(),
             "help", new CommandHelp(),
             "version", new CommandVersion()

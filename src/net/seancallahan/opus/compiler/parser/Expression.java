@@ -174,7 +174,7 @@ public abstract class Expression
     public void writeTo(DataOutputStream out) throws IOException
     {
         // NOTE: maybe use an enum to store expression types.
-        out.writeUTF(getClass().getName());
+        out.writeUTF(getClass().getSimpleName());
     }
 
     public static final class Binary extends Expression

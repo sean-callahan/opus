@@ -2,6 +2,8 @@ package net.seancallahan.opus.tools.opus;
 
 import net.seancallahan.opus.compiler.Compiler;
 
+import java.io.File;
+
 public class CommandBuild implements Command
 {
     @Override
@@ -16,7 +18,7 @@ public class CommandBuild implements Command
             try
             {
                 Compiler compiler = new Compiler();
-                compiler.compile(new java.io.File(arg));
+                compiler.compile(new File(arg), true);
             }
             catch (Exception e)
             {

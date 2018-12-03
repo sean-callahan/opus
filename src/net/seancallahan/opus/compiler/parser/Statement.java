@@ -7,6 +7,9 @@ import net.seancallahan.opus.lang.Declaration;
 import net.seancallahan.opus.lang.Type;
 import net.seancallahan.opus.lang.Variable;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+
 public abstract class Statement
 {
     public static Statement parse(ParserContext context) throws SyntaxException
@@ -135,6 +138,11 @@ public abstract class Statement
         }
     }
 
+    public void writeTo(DataOutputStream out) throws IOException
+    {
+        out.writeUTF(getClass().getSimpleName());
+    }
+
     public static class Assignment extends Statement
     {
         private Token name;
@@ -154,6 +162,14 @@ public abstract class Statement
         public Expression getExpression()
         {
             return expression;
+        }
+
+        @Override
+        public void writeTo(DataOutputStream out) throws IOException
+        {
+            super.writeTo(out);
+            name.writeTo(out);
+            expression.writeTo(out);
         }
     }
 

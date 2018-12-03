@@ -18,13 +18,17 @@ public class Compiler
         return packages;
     }
 
-    public void compile(File file) throws Exception
+    public SourceFile compile(File file, boolean assemble) throws Exception
     {
         SourceFile sourceFile = new SourceFile(file);
         sourceFile.lex();
         sourceFile.parse();
-        sourceFile.compile();
-    }
+        if (assemble)
+        {
+            sourceFile.compile();
+        }
 
+        return sourceFile;
+    }
 
 }
