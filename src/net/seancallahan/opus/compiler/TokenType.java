@@ -18,6 +18,7 @@ public enum TokenType
     RETURNS,         // ->
     DECLARE_GLOBAL,  // ::
     DECLARE,         // :
+    CREATE,          // ~
 
     LEFT_BRACE,      // {
     LEFT_BRACKET,    // [

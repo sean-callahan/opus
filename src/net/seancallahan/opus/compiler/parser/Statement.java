@@ -74,11 +74,9 @@ public abstract class Statement implements Resolvable
 
         Expression expression = Expression.parse(context);
 
-        Type type = Parser.parseType(expression);
-
         context.expect(TokenType.TERMINATOR);
 
-        VariableDeclaration declaration = new VariableDeclaration(context.getCurrentBody(), name, type, expression);
+        VariableDeclaration declaration = new VariableDeclaration(context.getCurrentBody(), name, expression);
 
         context.getCurrentBody().getScope().add(declaration);
 
@@ -243,7 +241,7 @@ public abstract class Statement implements Resolvable
         public void resolve(Resolver resolver) throws SyntaxException
         {
             resolver.resolve(getParent().getScope(), name);
-            resolver.resolve(getParent().getScope(), expression);
+            resolver.resolve(expression);
         }
     }
 
@@ -281,7 +279,7 @@ public abstract class Statement implements Resolvable
         public void resolve(Resolver resolver) throws SyntaxException
         {
             resolver.resolve(getParent().getScope(), name);
-            resolver.resolve(getParent().getScope(), value);
+            resolver.resolve(value);
         }
     }
 
@@ -303,7 +301,7 @@ public abstract class Statement implements Resolvable
         @Override
         public void resolve(Resolver resolver) throws SyntaxException
         {
-            resolver.resolve(getParent().getScope(), expression);
+            resolver.resolve(expression);
         }
     }
 
@@ -422,7 +420,7 @@ public abstract class Statement implements Resolvable
         @Override
         public void resolve(Resolver resolver) throws SyntaxException
         {
-            resolver.resolve(getParent().getScope(), condition);
+            resolver.resolve(condition);
             // TODO: body
         }
     }
@@ -434,13 +432,15 @@ public abstract class Statement implements Resolvable
 
         private VariableDeclaration(Body parent, Token name, Type type)
         {
-            this(parent, name, type, null);
-        }
-
-        private VariableDeclaration(Body parent, Token name, Type type, Expression expression)
-        {
             super(parent);
             this.variable = new Variable(name, type);
+            this.expression = null;
+        }
+
+        private VariableDeclaration(Body parent, Token name, Expression expression)
+        {
+            super(parent);
+            this.variable = new Variable(name);
             this.expression = expression;
         }
 
@@ -463,7 +463,7 @@ public abstract class Statement implements Resolvable
         @Override
         public void resolve(Resolver resolver) throws SyntaxException
         {
-            resolver.resolve(getParent().getScope(), expression);
+            resolver.resolve(expression);
         }
     }
 }

@@ -4,5 +4,12 @@ Basic :: {}
 
 Basic.Foo :: () -> s32 {
     a := 5;
+    b := a;
+    c := b;
+
+    if a < b < c || (a == b) || !(b == c) {
+        a = 5;
+    }
+
     return a;
 }

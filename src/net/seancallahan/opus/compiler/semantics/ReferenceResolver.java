@@ -71,7 +71,7 @@ public class ReferenceResolver implements Resolver
     }
 
     @Override
-    public void resolve(Scope scope, Expression expression) throws SyntaxException
+    public void resolve(Expression expression) throws SyntaxException
     {
         expression.resolve(this);
     }

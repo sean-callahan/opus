@@ -111,10 +111,6 @@ public abstract class Expression implements Resolvable
             {
                 return member(context, name);
             }
-            else if (context.has(TokenType.LEFT_BRACE))
-            {
-                return createNew(context, name);
-            }
 
             return new Literal(context.getCurrentBody().getScope(), name);
         }
@@ -122,6 +118,13 @@ public abstract class Expression implements Resolvable
         if (context.matches(TokenType.LITERAL,TokenType.NIL, TokenType.TRUE, TokenType.FALSE))
         {
             return new Literal(context.getCurrentBody().getScope(), context);
+        }
+
+        if (context.has(TokenType.CREATE))
+        {
+            Token name = context.expect(TokenType.NAME);
+            context.expect(TokenType.LEFT_BRACE);
+            return createNew(context, name);
         }
 
         if (context.matches(TokenType.LEFT_PAREN))
@@ -144,6 +147,7 @@ public abstract class Expression implements Resolvable
             do
             {
                 Token field = context.expect(TokenType.NAME);
+
                 context.expect(TokenType.DECLARE);
 
                 Expression expression = parse(context);
@@ -268,8 +272,8 @@ public abstract class Expression implements Resolvable
         @Override
         public void resolve(Resolver resolver) throws SyntaxException
         {
-            resolver.resolve(getScope(), left);
-            resolver.resolve(getScope(), right);
+            resolver.resolve(left);
+            resolver.resolve(right);
         }
     }
 
@@ -380,7 +384,7 @@ public abstract class Expression implements Resolvable
 
             for (Expression arg : arguments)
             {
-                resolver.resolve(getScope(), arg);
+                resolver.resolve(arg);
             }
         }
     }
@@ -393,6 +397,11 @@ public abstract class Expression implements Resolvable
         {
             super(scope);
             this.inner = inner;
+        }
+
+        public Expression getInner()
+        {
+            return inner;
         }
 
         @Override
@@ -414,7 +423,7 @@ public abstract class Expression implements Resolvable
         @Override
         public void resolve(Resolver resolver) throws SyntaxException
         {
-            resolver.resolve(getScope(), inner);
+            resolver.resolve(inner);
         }
     }
 
@@ -508,7 +517,7 @@ public abstract class Expression implements Resolvable
 
             for (Expression field : fields.values())
             {
-                resolver.resolve(getScope(), field);
+                resolver.resolve(field);
             }
         }
     }
@@ -562,7 +571,7 @@ public abstract class Expression implements Resolvable
         @Override
         public void resolve(Resolver resolver) throws SyntaxException
         {
-            resolver.resolve(getScope(), right);
+            resolver.resolve(right);
         }
     }
 }

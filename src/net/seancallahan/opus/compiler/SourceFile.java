@@ -3,6 +3,7 @@ package net.seancallahan.opus.compiler;
 import net.seancallahan.opus.compiler.jvm.ClassFile;
 import net.seancallahan.opus.compiler.parser.Parser;
 import net.seancallahan.opus.compiler.semantics.ReferenceResolver;
+import net.seancallahan.opus.compiler.semantics.TypeAnalysis;
 import net.seancallahan.opus.lang.Class;
 import net.seancallahan.opus.lang.Declaration;
 
@@ -46,6 +47,9 @@ public class SourceFile
 
         ReferenceResolver referenceResolver = new ReferenceResolver(parser);
         referenceResolver.resolve();
+
+        TypeAnalysis typeAnalysis = new TypeAnalysis(parser);
+        typeAnalysis.perform();
     }
 
     public void compile() throws IOException, CompilerException

@@ -5,7 +5,12 @@ import net.seancallahan.opus.compiler.Token;
 public final class Variable implements Declaration
 {
     private final Token name;
-    private final Type type;
+    private Type type;
+
+    public Variable(Token name)
+    {
+        this(name, null);
+    }
 
     public Variable(Type type)
     {
@@ -26,6 +31,11 @@ public final class Variable implements Declaration
     public Type getType()
     {
         return type;
+    }
+
+    public void setType(Type type)
+    {
+        this.type = type;
     }
 
     @Override

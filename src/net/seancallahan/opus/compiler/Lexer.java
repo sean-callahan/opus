@@ -93,8 +93,12 @@ public class Lexer
                 return emit(TokenType.DOT);
             case '"':
                 return string();
+            case '~':
+                return emit(TokenType.CREATE);
             case '%':
                 return emit(TokenType.OPERATOR, Operator.MOD);
+            case '!':
+                return emit(TokenType.OPERATOR, Operator.NOT);
             case ':':
                 rune = input.read();
                 if (rune == ':')
