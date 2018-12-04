@@ -7,6 +7,6 @@ import net.seancallahan.opus.compiler.parser.SyntaxException;
 
 public interface Resolver
 {
-    void resolve(Expression expression) throws SyntaxException;
-    void resolve(Scope scope, Token token) throws SyntaxException;
+    Object resolve(Expression expression) throws SyntaxException;
+    Object resolve(Scope scope, Token token) throws SyntaxException;
 }

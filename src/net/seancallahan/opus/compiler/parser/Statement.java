@@ -139,6 +139,15 @@ public abstract class Statement implements Resolvable
 
     private static Statement simple(ParserContext context, Token name) throws SyntaxException
     {
+        if (context.has(TokenType.DOT))
+        {
+            return new SimpleExpression(context.getCurrentBody(), Expression.member(context, name));
+        }
+        else if (context.has(TokenType.LEFT_PAREN))
+        {
+            return new SimpleExpression(context.getCurrentBody(), Expression.method(context, null, name));
+        }
+
         Token next = context.getIterator().next();
         switch (next.getType())
         {
@@ -157,7 +166,7 @@ public abstract class Statement implements Resolvable
             case DECLARE_GLOBAL:
                 throw new UnsupportedOperationException("cannot declare a global type from within a function");
             default:
-                throw new UnsupportedOperationException(name.getValue() + " unimplemented");
+                throw new UnsupportedOperationException();
         }
     }
 
@@ -453,6 +462,35 @@ public abstract class Statement implements Resolvable
         public Variable getVariable()
         {
             return variable;
+        }
+
+        public Expression getExpression()
+        {
+            return expression;
+        }
+
+        @Override
+        public void resolve(Resolver resolver) throws SyntaxException
+        {
+            if (expression != null)
+            {
+                Object value = resolver.resolve(expression);
+                if (value instanceof Type)
+                {
+                    variable.setType((Type)value);
+                }
+            }
+        }
+    }
+
+    public static class SimpleExpression extends Statement
+    {
+        private final Expression expression;
+
+        public SimpleExpression(Body parent, Expression expression)
+        {
+            super(parent);
+            this.expression = expression;
         }
 
         public Expression getExpression()

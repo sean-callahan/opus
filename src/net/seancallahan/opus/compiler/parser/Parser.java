@@ -163,9 +163,14 @@ public class Parser
     private static void parseFunction(ParserContext context, Function func) throws CompilerException {
         context.setState(ParserContext.State.FUNCTION);
 
+        parseSignature(context, func.getParameters(), func.getReturns());
+
         context.setCurrentBody(func.getBody());
 
-        parseSignature(context, func.getParameters(), func.getReturns());
+        for (Variable param : func.getParameters())
+        {
+            context.getCurrentBody().getScope().put(param.getName().getValue(), param);
+        }
 
         context.expect(TokenType.LEFT_BRACE);
 

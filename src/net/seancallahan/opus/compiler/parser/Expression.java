@@ -112,6 +112,11 @@ public abstract class Expression implements Resolvable
                 return member(context, name);
             }
 
+            if (context.has(TokenType.LEFT_PAREN))
+            {
+                return method(context, null, name);
+            }
+
             return new Literal(context.getCurrentBody().getScope(), name);
         }
 
@@ -160,7 +165,7 @@ public abstract class Expression implements Resolvable
         return new Instantiation(context.getCurrentBody().getScope(), clazz, fields);
     }
 
-    private static Expression member(ParserContext context, Token callee) throws SyntaxException
+    public static Expression member(ParserContext context, Token callee) throws SyntaxException
     {
         Token name = context.expect(TokenType.NAME);
 
@@ -177,7 +182,7 @@ public abstract class Expression implements Resolvable
         return new FieldReference(context.getCurrentBody().getScope(), callee, name);
     }
 
-    private static Expression method(ParserContext context, Token callee, Token name) throws SyntaxException
+    public static Expression method(ParserContext context, Token callee, Token name) throws SyntaxException
     {
         List<Expression> arguments = new ArrayList<>();
 
@@ -379,7 +384,10 @@ public abstract class Expression implements Resolvable
         @Override
         public void resolve(Resolver resolver) throws SyntaxException
         {
-            resolver.resolve(getScope(), callee);
+            if (isMethod())
+            {
+                resolver.resolve(getScope(), callee);
+            }
             resolver.resolve(getScope(), function);
 
             for (Expression arg : arguments)

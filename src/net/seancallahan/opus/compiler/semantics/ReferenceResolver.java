@@ -71,22 +71,26 @@ public class ReferenceResolver implements Resolver
     }
 
     @Override
-    public void resolve(Expression expression) throws SyntaxException
+    public Object resolve(Expression expression) throws SyntaxException
     {
         expression.resolve(this);
+        return null;
     }
 
     @Override
-    public void resolve(Scope scope, Token token) throws SyntaxException
+    public Object resolve(Scope scope, Token token) throws SyntaxException
     {
         if (!(token.getType() == TokenType.NAME || token.getType() == TokenType.THIS))
         {
-            return;
+            return null;
         }
 
-        if (!scope.contains(token.getValue()))
+        boolean defined = scope.contains(token.getValue()) || parser.getDeclarations().containsKey(token.getValue());
+
+        if (!defined)
         {
             throw new SyntaxException(String.format("'%s' is not defined", token.getValue()), token);
         }
+        return null;
     }
 }

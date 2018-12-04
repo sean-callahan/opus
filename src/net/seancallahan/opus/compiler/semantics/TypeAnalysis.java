@@ -42,7 +42,7 @@ public class TypeAnalysis implements Resolver
     {
         if (expression instanceof Expression.Literal)
         {
-            return checkType((Expression.Literal)expression);
+            return checkLiteralType((Expression.Literal)expression);
         }
         if (expression instanceof Expression.Unary)
         {
@@ -65,11 +65,15 @@ public class TypeAnalysis implements Resolver
 
             return left;
         }
+        if (expression instanceof Expression.FunctionCall)
+        {
+            return null;
+        }
 
-        throw new UnsupportedOperationException();
+        throw new UnsupportedOperationException("cannot check type of unsupported expression");
     }
 
-    private Type checkType(Expression.Literal literal) throws SyntaxException
+    private Type checkLiteralType(Expression.Literal literal) throws SyntaxException
     {
         Token token = literal.getToken();
         String value = token.getValue();
@@ -77,12 +81,20 @@ public class TypeAnalysis implements Resolver
         if (token.getType() == TokenType.NAME || token.getType() == TokenType.THIS)
         {
             Declaration declaration = literal.getScope().get(value);
+            if (declaration instanceof Function)
+            {
+                return new Type(declaration.getName().getValue());
+            }
+            if (declaration instanceof Variable)
+            {
+                return ((Variable)declaration).getType();
+            }
             if (!(declaration instanceof Statement.VariableDeclaration))
             {
                 throw new UnsupportedOperationException();
             }
 
-            Statement.VariableDeclaration varDecl = (Statement.VariableDeclaration)declaration;
+            Statement.VariableDeclaration varDecl = (Statement.VariableDeclaration) declaration;
 
             Variable variable = varDecl.getVariable();
             if (variable.getType() != null)
@@ -133,14 +145,14 @@ public class TypeAnalysis implements Resolver
     }
 
     @Override
-    public void resolve(Expression expression) throws SyntaxException
+    public Object resolve(Expression expression) throws SyntaxException
     {
-        checkType(expression);
+        return checkType(expression);
     }
 
     @Override
-    public void resolve(Scope scope, Token token) throws SyntaxException
+    public Object resolve(Scope scope, Token token) throws SyntaxException
     {
-
+        return null;
     }
 }
