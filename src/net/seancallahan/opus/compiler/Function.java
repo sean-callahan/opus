@@ -24,6 +24,13 @@ public class Function implements Declaration
         this.body = new Body(scope);
     }
 
+    public Function(Token name, Scope parent, Body body)
+    {
+        this.name = name;
+        this.scope = new Scope(parent);
+        this.body = body;
+    }
+
     public Token getName()
     {
         return name;

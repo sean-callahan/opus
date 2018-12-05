@@ -37,6 +37,7 @@ public class Opus
             "ast", new CommandAst(),
             "build", new CommandBuild(),
             "help", new CommandHelp(),
+            "run", new CommandRun(),
             "version", new CommandVersion()
         );
     }

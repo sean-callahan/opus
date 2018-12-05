@@ -18,6 +18,13 @@ public final class Method extends Function
         getScope().put("this", null);
     }
 
+    public Method(Function function, Class parent)
+    {
+        super(function.getName(), function.getScope(), function.getBody());
+        this.parentName = parent.getName();
+        this.parent = parent;
+    }
+
     public Class getParent()
     {
         return parent;

@@ -14,7 +14,9 @@ import java.util.Map;
 
 public class CodeGenerator
 {
-    private int stackSize;
+    private short maxStack;
+    private short stackSize;
+    private short maxLocalVars;
 
     private final List<Byte> code = new ArrayList<>();
     private final ConstantPool pool;
@@ -48,13 +50,18 @@ public class CodeGenerator
 
         if (last != null && !(last instanceof Statement.Return))
         {
-            add(Instruction.ret);
+            add(Instruction._return);
         }
     }
 
-    public int getStackSize()
+    public short getMaxStack()
     {
-        return stackSize;
+        return maxStack;
+    }
+
+    public short getMaxLocalVars()
+    {
+        return maxLocalVars;
     }
 
     public byte[] getCode()
@@ -137,6 +144,7 @@ public class CodeGenerator
         variables.put(declaration.getVariable(), this.nextVariable);
 
         this.nextVariable++;
+        maxLocalVars++;
     }
 
     private void assignment(Statement.Assignment assignment) throws CompilerException
@@ -172,43 +180,62 @@ public class CodeGenerator
         if (value < 1 << Byte.SIZE)
         {
             // TODO: add iconst_n instructions
-            stackSize += Byte.SIZE;
+            pushSize(1);
             add(Instruction.bipush, (byte) value);
             add(Instruction.istore, index);
             add(Instruction.pop);
+            popSize(1);
             return;
         }
 
         if (value < (1 << Short.SIZE))
         {
-            stackSize += Short.SIZE;
+            pushSize(2);
             add(Instruction.sipush, (byte) (value & 0xff), (byte) ((value >> 8) & 0xff));
             add(Instruction.istore, index);
             add(Instruction.pop);
+            popSize(2);
             return;
         }
 
         if (value < 1 << Integer.SIZE)
         {
             short poolIndex = pool.add(new Constant<>(Constant.Kind.INTEGER, (int) value));
-            stackSize += Integer.SIZE;
+            pushSize(2);
             add(Instruction.ldc_w, (byte) (poolIndex & 0xff), (byte) ((poolIndex >> 8) & 0xff));
             add(Instruction.istore, index);
             add(Instruction.pop);
+            popSize(2);
             return;
         }
 
         if (value < 1 << Long.SIZE)
         {
             short poolIndex = pool.add(new Constant<>(Constant.Kind.LONG, value));
-            stackSize += Long.SIZE;
+            pushSize(2);
             add(Instruction.ldc2_w, (byte) (poolIndex & 0xff), (byte) ((poolIndex >> 8) & 0xff));
             add(Instruction.lstore, index);
             add(Instruction.pop2);
+            popSize(2);
             return;
         }
 
         throw new UnsupportedOperationException("value too large");
+    }
+
+    private void pushSize(int size)
+    {
+        stackSize += size;
+        if (stackSize > maxStack)
+        {
+            maxStack = stackSize;
+        }
+    }
+
+    private void popSize(int size)
+    {
+        assert stackSize >= size;
+        stackSize -= size;
     }
 
     private void returnStatement(Statement.Return stmt)

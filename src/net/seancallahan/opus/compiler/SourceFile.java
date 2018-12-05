@@ -6,11 +6,14 @@ import net.seancallahan.opus.compiler.semantics.ReferenceResolver;
 import net.seancallahan.opus.compiler.semantics.TypeAnalysis;
 import net.seancallahan.opus.lang.Class;
 import net.seancallahan.opus.lang.Declaration;
+import net.seancallahan.opus.lang.Method;
 
 import java.io.DataOutputStream;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.List;
 
 public class SourceFile
@@ -54,21 +57,48 @@ public class SourceFile
 
     public void compile() throws IOException, CompilerException
     {
-        if (parser == null)
-        {
-            throw new IllegalStateException("must first call parse()");
+        String basePath = file.getParentFile().getAbsolutePath();
+
+        String fileName = file.getName();
+        int pos = fileName.lastIndexOf(".");
+        if (pos > 0) {
+            fileName = fileName.substring(0, pos);
         }
 
-        for (Declaration decl : parser.getDeclarations().values())
+        Class ghost = null;
+
+        for (Declaration declaration : parser.getDeclarations().values())
         {
-            if (decl instanceof Class)
+            if (declaration instanceof Class)
             {
-                ClassFile cf = new ClassFile((Class) decl);
-                FileOutputStream s = new FileOutputStream("/Users/sean/Desktop/class_" + decl.getName() + ".class");
-                cf.write(new DataOutputStream(s));
-                s.close();
+                Class clazz = (Class)declaration;
+
+                generateClassFile(basePath, fileName + "_" + clazz.getName().getValue(), clazz);
+            }
+            else if (declaration instanceof Function && !(declaration instanceof Method))
+            {
+                Function function = (Function)declaration;
+
+                if (ghost == null)
+                {
+                    ghost = new Class(null);
+                }
+                ghost.getMethods().add(new Method(function, ghost));
             }
         }
+
+        if (ghost != null)
+        {
+            generateClassFile(basePath, fileName + "_static", ghost);
+        }
+    }
+
+    private static void generateClassFile(String base, String name, Class clazz) throws IOException, CompilerException
+    {
+        ClassFile cf = new ClassFile(clazz, name);
+        FileOutputStream s = new FileOutputStream(base + File.pathSeparator + name + ".class");
+        cf.write(new DataOutputStream(s));
+        s.close();
     }
 
     public static class Position

@@ -34,28 +34,12 @@ public final class Class implements Declaration
 
     public boolean isPublic()
     {
-        return Character.isUpperCase(name.getValue().charAt(0));
-    }
-
-    @Override
-    public String toString()
-    {
-        StringBuilder sb = new StringBuilder();
-
-        sb.append(name.getValue()).append("{ ");
-
-        for (int i = 0; i < fields.size(); i++)
+        if (name == null)
         {
-            sb.append(fields.get(i));
-            if (i != fields.size() - 1)
-            {
-                sb.append(',');
-            }
-            sb.append(' ');
+            return true;
         }
-        sb.append('}');
 
-        return sb.toString();
+        return Character.isUpperCase(name.getValue().charAt(0));
     }
 
 }

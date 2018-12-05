@@ -11,8 +11,16 @@ public class ConstantPool
 
     public short add(Constant item)
     {
+        for (Constant in : pool)
+        {
+            if (in.getValue().equals(item.getValue()))
+            {
+                return (short)(pool.indexOf(item)+1);
+            }
+        }
+
         pool.add(item);
-        return (short)pool.indexOf(item);
+        return (short)(pool.indexOf(item)+1);
     }
 
     public Constant get(int index)
@@ -22,7 +30,7 @@ public class ConstantPool
 
     public void write(DataOutputStream out) throws IOException
     {
-        out.writeShort(pool.size());
+        out.writeShort(pool.size()+1);
 
         for (Constant c : pool)
         {

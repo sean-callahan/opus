@@ -7,7 +7,7 @@ public class CommandRun implements Command
     {
         if (args.length < 1)
         {
-            System.out.println("must supply an OAR file");
+            System.out.println("must supply an .class or .oar file");
             System.exit(1);
         }
     }
@@ -15,6 +15,6 @@ public class CommandRun implements Command
     @Override
     public String getDescription()
     {
-        return "runs an OAR file";
+        return "runs an .class or .oar file";
     }
 }
