@@ -1,16 +1,20 @@
 package net.seancallahan.opus.compiler.jvm;
 
 import net.seancallahan.opus.compiler.CompilerException;
-import net.seancallahan.opus.compiler.SourceFile;
+import net.seancallahan.opus.compiler.jvm.attributes.Attribute;
+import net.seancallahan.opus.compiler.jvm.attributes.Code;
 import net.seancallahan.opus.lang.Class;
 import net.seancallahan.opus.lang.Declaration;
 import net.seancallahan.opus.lang.Method;
 import net.seancallahan.opus.lang.Variable;
 
+import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class ClassFile
@@ -23,6 +27,9 @@ public class ClassFile
 
     private final ConstantPool constantPool = new ConstantPool();
 
+    private final ByteArrayOutputStream internalBuffer = new ByteArrayOutputStream();
+    private final DataOutputStream buffer = new DataOutputStream(internalBuffer);
+
     private final ConstantDeclaration initializer = new ConstantDeclaration
     (
         constantPool.add(new Constant<>(Constant.Kind.UTF8, "<init>")),
@@ -32,7 +39,6 @@ public class ClassFile
     private final int accessFlags;
     private final short thisClass;
     private final short superClass;
-    private final Map<String, Short> attributeIndices = new HashMap<>();
 
     private final Map<Declaration, ConstantDeclaration> declarations = new HashMap<>();
 
@@ -48,8 +54,6 @@ public class ClassFile
         // TODO: write opus base Object class
         short superIndex = constantPool.add(new Constant<>(Constant.Kind.UTF8, "java/lang/Object"));
         this.superClass = constantPool.add(new Constant<>(Constant.Kind.CLASS, superIndex));
-
-        attributeIndices.put("Code", constantPool.add(new Constant<>(Constant.Kind.UTF8, "Code")));
 
         for (Method method : clazz.getMethods())
         {
@@ -68,31 +72,33 @@ public class ClassFile
         out.writeShort((short)minorVersion);
         out.writeShort((short)majorVersion);
 
-        constantPool.write(out);
+        buffer.writeShort((short)accessFlags);
+        buffer.writeShort(thisClass);
+        buffer.writeShort(superClass);
 
-        out.writeShort((short)accessFlags);
-        out.writeShort(thisClass);
-        out.writeShort(superClass);
+        buffer.writeShort(0); // interfaces_count
 
-        out.writeShort(0); // interfaces_count
-
-        out.writeShort(clazz.getFields().size());
+        buffer.writeShort(clazz.getFields().size());
         for (Variable field : clazz.getFields())
         {
-            writeField(out, field, declarations.get(field));
+            writeField(buffer, field, declarations.get(field));
         }
 
-        out.writeShort(clazz.getMethods().size() + 1);
+        buffer.writeShort(clazz.getMethods().size() + 1);
 
         // JVM requires a constructor, so make an empty one.
-        writeMethod(out, null, initializer);
+        writeMethod(buffer, null, initializer);
 
         for (Method method : clazz.getMethods())
         {
-            writeMethod(out, method, declarations.get(method));
+            writeMethod(buffer, method, declarations.get(method));
         }
 
-        out.writeShort(0); // attributes_count
+        buffer.writeShort(0); // attributes_count
+
+        constantPool.write(out);
+
+        internalBuffer.writeTo(out);
     }
 
     private void addDeclaration(Declaration declaration)
@@ -124,51 +130,14 @@ public class ClassFile
         out.writeShort(cd.getNameIndex());
         out.writeShort(cd.getDescriptorIndex());
 
-        out.writeShort(1); // attributes
+        List<Attribute> attributes = new ArrayList<>();
+        attributes.add(new Code(constantPool, method));
 
-        byte[] info = null;
-        if (method != null)
+        out.writeShort(attributes.size()); // attributes_count
+        for (Attribute attribute : attributes)
         {
-            info = createCodeAttribute(method, constantPool);
+            attribute.write(out);
         }
-
-        writeAttribute(out, "Code", info);
-    }
-
-    private void writeAttribute(DataOutputStream out, String name, byte[] info) throws IOException
-    {
-        assert attributeIndices.containsKey(name);
-
-        short nameIndex = attributeIndices.get(name);
-        out.writeShort(nameIndex);
-
-        if (info == null)
-        {
-            out.writeInt(0); // length
-            return;
-        }
-
-        out.writeInt(info.length);
-        out.write(info);
-    }
-
-    private static byte[] createCodeAttribute(Method method, ConstantPool pool) throws CompilerException
-    {
-        CodeGenerator gen = new CodeGenerator(method, pool);
-        byte[] code = gen.getCode();
-
-        ByteBuffer buffer = ByteBuffer.allocate(code.length + 12);
-
-        buffer.putShort(gen.getMaxStack());
-        buffer.putShort((short)(gen.getMaxLocalVars() + 1));
-
-        buffer.putInt(code.length);
-        buffer.put(code);
-
-        buffer.putShort((short)0); // exceptions
-        buffer.putShort((short)0); // attributes
-
-        return buffer.array();
     }
 
     private class ConstantDeclaration

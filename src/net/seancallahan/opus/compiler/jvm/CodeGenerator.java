@@ -1,12 +1,15 @@
 package net.seancallahan.opus.compiler.jvm;
 
 import net.seancallahan.opus.compiler.CompilerException;
+import net.seancallahan.opus.compiler.jvm.attributes.Code;
+import net.seancallahan.opus.compiler.jvm.attributes.LocalVariableTable;
 import net.seancallahan.opus.compiler.parser.Expression;
 import net.seancallahan.opus.compiler.parser.Statement;
 import net.seancallahan.opus.lang.Method;
 import net.seancallahan.opus.lang.Type;
 import net.seancallahan.opus.lang.Variable;
 
+import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -14,19 +17,34 @@ import java.util.Map;
 
 public class CodeGenerator
 {
+    // TODO: move this to an Attribute subclass
+
     private short maxStack;
     private short stackSize;
     private short maxLocalVars;
 
-    private final List<Byte> code = new ArrayList<>();
     private final ConstantPool pool;
+    private final ByteArrayOutputStream code;
+
+    private final LocalVariableTable localVariableTable;
 
     private Map<Variable, Byte> variables = new HashMap<>();
     private byte nextVariable = 1;
 
-    public CodeGenerator(Method method, ConstantPool pool) throws CompilerException
+    public CodeGenerator(Code attribute) throws CompilerException
     {
-        this.pool = pool;
+        Method method = attribute.getMethod();
+
+        this.pool = attribute.getPool();
+        this.localVariableTable = new LocalVariableTable(pool);
+        this.code = attribute.getCode();
+
+        if (method == null)
+        {
+            return;
+        }
+
+        attribute.getAttributes().add(localVariableTable);
 
         for (Statement stmt : method.getBody().getStatements())
         {
@@ -64,28 +82,18 @@ public class CodeGenerator
         return maxLocalVars;
     }
 
-    public byte[] getCode()
-    {
-        byte[] code = new byte[this.code.size()];
-        for (int i = 0; i < code.length; i ++)
-        {
-            code[i] = this.code.get(i);
-        }
-        return code;
-    }
-
     private void add(Instruction instruction, byte... args)
     {
-        code.add(instruction.getOpcode());
+        code.write(instruction.getOpcode());
         for (byte arg : args)
         {
-            code.add(arg);
+            code.write(arg);
         }
     }
 
     private static void expr(Expression expr)
     {
-        // NOTE: maybe return the type of the expression?
+
     }
 
     private void variableDeclaration(Statement.VariableDeclaration declaration)
@@ -132,14 +140,20 @@ public class CodeGenerator
                 throw new UnsupportedOperationException("type not supported");
         }
 
+        short length;
+
         if (this.nextVariable > 3)
         {
             this.add(store, this.nextVariable);
+            length = 3;
         }
         else
         {
-            this.add(store1to3[this.nextVariable-1]);
+            this.add(store1to3[this.nextVariable - 1]);
+            length = 2;
         }
+
+        localVariableTable.add(declaration.getVariable(), (short)code.size(), length, nextVariable);
 
         variables.put(declaration.getVariable(), this.nextVariable);
 
