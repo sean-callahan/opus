@@ -137,6 +137,7 @@ public abstract class Statement implements Resolvable
     {
         // TODO: multi returns
         Expression value = Expression.parse(context);
+        context.expect(TokenType.TERMINATOR);
         return new Return(context.getCurrentBody(), value);
     }
 
