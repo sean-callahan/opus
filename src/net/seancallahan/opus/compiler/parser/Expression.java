@@ -2,6 +2,7 @@ package net.seancallahan.opus.compiler.parser;
 
 import net.seancallahan.opus.compiler.Operator;
 import net.seancallahan.opus.compiler.Scope;
+import net.seancallahan.opus.compiler.SourceFile;
 import net.seancallahan.opus.compiler.Token;
 import net.seancallahan.opus.compiler.TokenType;
 import net.seancallahan.opus.compiler.semantics.Resolvable;
@@ -22,6 +23,8 @@ public abstract class Expression implements Resolvable
     {
         this.scope = scope;
     }
+
+    public abstract SourceFile.Position getStartPosition();
 
     public Scope getScope()
     {
@@ -280,6 +283,12 @@ public abstract class Expression implements Resolvable
             resolver.resolve(left);
             resolver.resolve(right);
         }
+
+        @Override
+        public SourceFile.Position getStartPosition()
+        {
+            return left.getStartPosition();
+        }
     }
 
     public static final class FieldReference extends Expression
@@ -323,6 +332,12 @@ public abstract class Expression implements Resolvable
         {
             resolver.resolve(getScope(), callee);
             resolver.resolve(getScope(), name);
+        }
+
+        @Override
+        public SourceFile.Position getStartPosition()
+        {
+            return callee.getPosition();
         }
     }
 
@@ -395,6 +410,16 @@ public abstract class Expression implements Resolvable
                 resolver.resolve(arg);
             }
         }
+
+        @Override
+        public SourceFile.Position getStartPosition()
+        {
+            if (isMethod())
+            {
+                return callee.getPosition();
+            }
+            return function.getPosition();
+        }
     }
 
     public static final class Group extends Expression
@@ -432,6 +457,12 @@ public abstract class Expression implements Resolvable
         public void resolve(Resolver resolver) throws SyntaxException
         {
             resolver.resolve(inner);
+        }
+
+        @Override
+        public SourceFile.Position getStartPosition()
+        {
+            return inner.getStartPosition();
         }
     }
 
@@ -473,6 +504,12 @@ public abstract class Expression implements Resolvable
         public void resolve(Resolver resolver) throws SyntaxException
         {
             resolver.resolve(getScope(), token);
+        }
+
+        @Override
+        public SourceFile.Position getStartPosition()
+        {
+            return token.getPosition();
         }
     }
 
@@ -528,6 +565,12 @@ public abstract class Expression implements Resolvable
                 resolver.resolve(field);
             }
         }
+
+        @Override
+        public SourceFile.Position getStartPosition()
+        {
+            return className.getPosition();
+        }
     }
 
     public static final class Unary extends Expression
@@ -580,6 +623,12 @@ public abstract class Expression implements Resolvable
         public void resolve(Resolver resolver) throws SyntaxException
         {
             resolver.resolve(right);
+        }
+
+        @Override
+        public SourceFile.Position getStartPosition()
+        {
+            return right.getStartPosition();
         }
     }
 }

@@ -2,6 +2,7 @@ package net.seancallahan.opus.compiler.jvm;
 
 import net.seancallahan.opus.compiler.CompilerException;
 import net.seancallahan.opus.compiler.jvm.attributes.Code;
+import net.seancallahan.opus.compiler.jvm.attributes.LineNumberTable;
 import net.seancallahan.opus.compiler.jvm.attributes.LocalVariableTable;
 import net.seancallahan.opus.compiler.parser.Expression;
 import net.seancallahan.opus.compiler.parser.Statement;
@@ -10,7 +11,6 @@ import net.seancallahan.opus.lang.Type;
 import net.seancallahan.opus.lang.Variable;
 
 import java.io.ByteArrayOutputStream;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,7 +36,10 @@ public class CodeGenerator
         Method method = attribute.getMethod();
 
         this.pool = attribute.getPool();
+
         this.localVariableTable = new LocalVariableTable(pool);
+        LineNumberTable lineNumberTable = new LineNumberTable(pool);
+
         this.code = attribute.getCode();
 
         if (method == null)
@@ -45,9 +48,15 @@ public class CodeGenerator
         }
 
         attribute.getAttributes().add(localVariableTable);
+        attribute.getAttributes().add(lineNumberTable);
 
         for (Statement stmt : method.getBody().getStatements())
         {
+            if (stmt == null)
+            {
+                continue;
+            }
+
             if (stmt instanceof Statement.VariableDeclaration)
             {
                 variableDeclaration((Statement.VariableDeclaration)stmt);
@@ -59,6 +68,15 @@ public class CodeGenerator
             else if (stmt instanceof Statement.Return)
             {
                 returnStatement((Statement.Return)stmt);
+            }
+
+            if (stmt.getStartPosition() != null)
+            {
+                short line = (short)stmt.getStartPosition().getLine();
+                if (!lineNumberTable.contains(line))
+                {
+                    lineNumberTable.add(line, (short)code.size());
+                }
             }
         }
 

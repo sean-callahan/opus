@@ -1,6 +1,7 @@
 package net.seancallahan.opus.compiler.parser;
 
 import net.seancallahan.opus.compiler.Scope;
+import net.seancallahan.opus.compiler.SourceFile;
 import net.seancallahan.opus.compiler.Token;
 import net.seancallahan.opus.compiler.TokenType;
 import net.seancallahan.opus.compiler.semantics.Resolvable;
@@ -44,6 +45,8 @@ public abstract class Statement implements Resolvable
                 return null;
         }
     }
+
+    public abstract SourceFile.Position getStartPosition();
 
     private static VariableDeclaration parseVariableDeclaration(ParserContext context, Token name) throws SyntaxException
     {
@@ -252,6 +255,12 @@ public abstract class Statement implements Resolvable
             resolver.resolve(getParent().getScope(), name);
             resolver.resolve(expression);
         }
+
+        @Override
+        public SourceFile.Position getStartPosition()
+        {
+            return name.getPosition();
+        }
     }
 
     public static class Constant extends Statement implements Declaration
@@ -290,6 +299,12 @@ public abstract class Statement implements Resolvable
             resolver.resolve(getParent().getScope(), name);
             resolver.resolve(value);
         }
+
+        @Override
+        public SourceFile.Position getStartPosition()
+        {
+            return name.getPosition();
+        }
     }
 
     public static class Return extends Statement
@@ -312,6 +327,12 @@ public abstract class Statement implements Resolvable
         {
             resolver.resolve(expression);
         }
+
+        @Override
+        public SourceFile.Position getStartPosition()
+        {
+            return expression.getStartPosition();
+        }
     }
 
     public static class Import extends Statement implements Declaration
@@ -333,6 +354,12 @@ public abstract class Statement implements Resolvable
         public Token getName()
         {
             return path;
+        }
+
+        @Override
+        public SourceFile.Position getStartPosition()
+        {
+            return path.getPosition();
         }
     }
 
@@ -402,6 +429,25 @@ public abstract class Statement implements Resolvable
             }
             // TODO: body
         }
+
+        @Override
+        public SourceFile.Position getStartPosition()
+        {
+            if (index != null)
+            {
+                return index.getStartPosition();
+            }
+            else if (condition != null)
+            {
+                return condition.getStartPosition();
+            }
+            // TODO: support empty bodies
+            else if (body.getStatements().size() > 0)
+            {
+                return body.getStatements().get(0).getStartPosition();
+            }
+            return null;
+        }
     }
 
     public static class If extends Statement
@@ -431,6 +477,12 @@ public abstract class Statement implements Resolvable
         {
             resolver.resolve(condition);
             // TODO: body
+        }
+
+        @Override
+        public SourceFile.Position getStartPosition()
+        {
+            return null;
         }
     }
 
@@ -481,6 +533,12 @@ public abstract class Statement implements Resolvable
                 }
             }
         }
+
+        @Override
+        public SourceFile.Position getStartPosition()
+        {
+            return variable.getName().getPosition();
+        }
     }
 
     public static class SimpleExpression extends Statement
@@ -502,6 +560,12 @@ public abstract class Statement implements Resolvable
         public void resolve(Resolver resolver) throws SyntaxException
         {
             resolver.resolve(expression);
+        }
+
+        @Override
+        public SourceFile.Position getStartPosition()
+        {
+            return null;
         }
     }
 }
