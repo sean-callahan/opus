@@ -40,19 +40,21 @@ public class TypeAnalysis implements Resolver
 
     private Type checkType(Expression expression) throws SyntaxException
     {
+        Type type;
+
         if (expression instanceof Expression.Literal)
         {
-            return checkLiteralType((Expression.Literal)expression);
+            type = checkLiteralType((Expression.Literal)expression);
         }
-        if (expression instanceof Expression.Unary)
+        else if (expression instanceof Expression.Unary)
         {
-            return checkType(((Expression.Unary)expression).getRight());
+            type = checkType(((Expression.Unary)expression).getRight());
         }
-        if (expression instanceof Expression.Group)
+        else if (expression instanceof Expression.Group)
         {
-            return checkType(((Expression.Group)expression).getInner());
+            type = checkType(((Expression.Group)expression).getInner());
         }
-        if (expression instanceof Expression.Binary)
+        else if (expression instanceof Expression.Binary)
         {
             Expression.Binary binary = (Expression.Binary)expression;
             Type left = checkType(binary.getLeft());
@@ -63,14 +65,19 @@ public class TypeAnalysis implements Resolver
                 throw new SyntaxException("incompatible types in expression");
             }
 
-            return left;
+            type = left;
         }
-        if (expression instanceof Expression.FunctionCall)
+        else if (expression instanceof Expression.FunctionCall)
         {
-            return null;
+            type = null;
+        }
+        else
+        {
+            throw new UnsupportedOperationException("cannot check type of unsupported expression");
         }
 
-        throw new UnsupportedOperationException("cannot check type of unsupported expression");
+        expression.setType(type);
+        return type;
     }
 
     private Type checkLiteralType(Expression.Literal literal) throws SyntaxException

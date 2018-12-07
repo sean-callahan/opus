@@ -7,6 +7,7 @@ import net.seancallahan.opus.compiler.Token;
 import net.seancallahan.opus.compiler.TokenType;
 import net.seancallahan.opus.compiler.semantics.Resolvable;
 import net.seancallahan.opus.compiler.semantics.Resolver;
+import net.seancallahan.opus.lang.Type;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -18,6 +19,7 @@ import java.util.Map;
 public abstract class Expression implements Resolvable
 {
     private final Scope scope;
+    private Type type;
 
     protected Expression(Scope scope)
     {
@@ -25,6 +27,20 @@ public abstract class Expression implements Resolvable
     }
 
     public abstract SourceFile.Position getStartPosition();
+
+    public Type getType()
+    {
+        if (type == null)
+        {
+            throw new UnsupportedOperationException("type not resolved");
+        }
+        return type;
+    }
+
+    public void setType(Type type)
+    {
+        this.type = type;
+    }
 
     public Scope getScope()
     {

@@ -1,6 +1,7 @@
 package net.seancallahan.opus.compiler.jvm;
 
 import net.seancallahan.opus.compiler.CompilerException;
+import net.seancallahan.opus.compiler.Operator;
 import net.seancallahan.opus.compiler.jvm.attributes.Code;
 import net.seancallahan.opus.compiler.jvm.attributes.LineNumberTable;
 import net.seancallahan.opus.compiler.jvm.attributes.LocalVariableTable;
@@ -109,9 +110,36 @@ public class CodeGenerator
         }
     }
 
-    private static void expr(Expression expr)
+    private void expr(Expression expr)
     {
+        // NOTE: the expression _should_ have matching types at this point.
+        // TODO: convert non-matching types
 
+        if (expr instanceof Expression.Binary)
+        {
+            binary((Expression.Binary) expr);
+        }
+        else if (expr instanceof Expression.Unary)
+        {
+            unary((Expression.Unary) expr);
+        }
+        else if (expr instanceof Expression.Literal)
+        {
+            add(Instruction.bipush, Byte.valueOf(((Expression.Literal) expr).getToken().getValue()));
+        }
+    }
+
+    private void binary(Expression.Binary expr)
+    {
+        expr(expr.getLeft());
+        expr(expr.getRight());
+        add(getOpInstruction(expr.getType(), expr.getOperator()));
+    }
+
+    private void unary(Expression.Unary expr)
+    {
+        expr(expr.getRight());
+        add(getOpInstruction(expr.getType(), expr.getOperator()));
     }
 
     private void variableDeclaration(Statement.VariableDeclaration declaration)
@@ -198,9 +226,11 @@ public class CodeGenerator
         }
 
         Expression expr = assignment.getExpression();
+
         if (!(expr instanceof Expression.Literal))
         {
-            throw new UnsupportedOperationException("only literals supported for assignment");
+            this.expr(expr);
+            return;
         }
 
         Expression.Literal literal = (Expression.Literal) expr;
@@ -273,5 +303,64 @@ public class CodeGenerator
     private void returnStatement(Statement.Return stmt)
     {
         expr(stmt.getExpression());
+    }
+
+    private static final Map<String, Map<Operator, Instruction>> opTable = new HashMap<>();
+
+    static
+    {
+        final Map<Operator, Instruction> i32 = new HashMap<>();
+        i32.put(Operator.ADD, Instruction.iadd);
+        i32.put(Operator.SUBTRACT, Instruction.isub);
+        i32.put(Operator.MULTIPLY, Instruction.imul);
+        i32.put(Operator.DIVIDE, Instruction.idiv);
+        i32.put(Operator.MOD, Instruction.irem);
+        i32.put(Operator.LSHIFT, Instruction.ishl);
+        i32.put(Operator.RSHIFT, Instruction.ishr);
+        opTable.put("s32", i32);
+        opTable.put("u32", i32);
+
+        final Map<Operator, Instruction> i64 = new HashMap<>();
+        i64.put(Operator.ADD, Instruction.ladd);
+        i64.put(Operator.SUBTRACT, Instruction.lsub);
+        i64.put(Operator.MULTIPLY, Instruction.lmul);
+        i64.put(Operator.DIVIDE, Instruction.ldiv);
+        i64.put(Operator.MOD, Instruction.lrem);
+        i64.put(Operator.LSHIFT, Instruction.lshl);
+        i64.put(Operator.RSHIFT, Instruction.lshr);
+        opTable.put("s64", i64);
+        opTable.put("u64", i64);
+
+        final Map<Operator, Instruction> f32 = new HashMap<>();
+        f32.put(Operator.ADD, Instruction.fadd);
+        f32.put(Operator.SUBTRACT, Instruction.fsub);
+        f32.put(Operator.MULTIPLY, Instruction.fmul);
+        f32.put(Operator.DIVIDE, Instruction.fdiv);
+        f32.put(Operator.MOD, Instruction.frem);
+        opTable.put("f32", f32);
+
+        final Map<Operator, Instruction> f64 = new HashMap<>();
+        f64.put(Operator.ADD, Instruction.dadd);
+        f64.put(Operator.SUBTRACT, Instruction.dsub);
+        f64.put(Operator.MULTIPLY, Instruction.dmul);
+        f64.put(Operator.DIVIDE, Instruction.ddiv);
+        f64.put(Operator.MOD, Instruction.drem);
+        opTable.put("f64", f64);
+    }
+
+    private static Instruction getOpInstruction(Type type, Operator operator)
+    {
+        if (!type.isPrimitive())
+        {
+            throw new UnsupportedOperationException("only operations on primitive types are supported");
+        }
+
+        Map<Operator, Instruction> instructions = opTable.get(type.getName());
+        if (!instructions.containsKey(operator))
+        {
+            throw new UnsupportedOperationException("operator not supported for this type");
+        }
+
+        return instructions.get(operator);
     }
 }
