@@ -9,7 +9,6 @@ import net.seancallahan.opus.compiler.parser.Expression;
 import net.seancallahan.opus.compiler.parser.Statement;
 import net.seancallahan.opus.lang.Method;
 import net.seancallahan.opus.lang.Type;
-import net.seancallahan.opus.lang.Variable;
 
 import java.io.ByteArrayOutputStream;
 import java.util.HashMap;
@@ -29,7 +28,7 @@ public class CodeGenerator
 
     private final LocalVariableTable localVariableTable;
 
-    private Map<Variable, Byte> variables = new HashMap<>();
+    private Map<String, Byte> variables = new HashMap<>();
     private byte nextVariable = 1;
 
     public CodeGenerator(Code attribute) throws CompilerException
@@ -123,9 +122,13 @@ public class CodeGenerator
         {
             unary((Expression.Unary) expr);
         }
+        else if (expr instanceof Expression.Group)
+        {
+            expr(((Expression.Group) expr).getInner());
+        }
         else if (expr instanceof Expression.Literal)
         {
-            add(Instruction.bipush, Byte.valueOf(((Expression.Literal) expr).getToken().getValue()));
+            literal((Expression.Literal) expr);
         }
     }
 
@@ -142,6 +145,19 @@ public class CodeGenerator
         add(getOpInstruction(expr.getType(), expr.getOperator()));
     }
 
+    private void literal(Expression.Literal expr)
+    {
+        String text = expr.getToken().getValue();
+
+        if (variables.containsKey(text))
+        {
+            loadNumber(expr.getType(), variables.get(text));
+            return;
+        }
+
+        pushNumber(expr.getType(), expr.getToken().getValue());
+    }
+
     private void variableDeclaration(Statement.VariableDeclaration declaration)
     {
         Type type = declaration.getVariable().getType();
@@ -150,70 +166,32 @@ public class CodeGenerator
             return;
         }
 
-        Instruction[] store1to3 = null;
-        Instruction store = null;
-
-        // push default value
-        switch (type.getName())
+        if (declaration.getExpression() == null)
         {
-            case "s8":
-            case "u8":
-            case "s16":
-            case "u16":
-            case "s32":
-            case "u32":
-                add(Instruction.iconst_0);
-                store1to3 = new Instruction[] { Instruction.istore_1, Instruction.istore_2, Instruction.istore_3 };
-                store = Instruction.istore;
-                break;
-            case "s64":
-            case "u64":
-                add(Instruction.lconst_0);
-                store1to3 = new Instruction[] { Instruction.lstore_1, Instruction.lstore_2, Instruction.lstore_3 };
-                store = Instruction.lstore;
-                break;
-            case "f32":
-                add(Instruction.fconst_0);
-                store1to3 = new Instruction[] { Instruction.fstore_1, Instruction.fstore_2, Instruction.fstore_3 };
-                store = Instruction.fstore;
-                break;
-            case "f64":
-                add(Instruction.dconst_0);
-                store1to3 = new Instruction[] { Instruction.dstore_1, Instruction.dstore_2, Instruction.dstore_3 };
-                store = Instruction.dstore;
-                break;
-            default:
-                throw new UnsupportedOperationException("type not supported");
-        }
-
-        short length;
-
-        if (this.nextVariable > 3)
-        {
-            this.add(store, this.nextVariable);
-            length = 3;
+            pushNumber(type, "0");
         }
         else
         {
-            this.add(store1to3[this.nextVariable - 1]);
-            length = 2;
+            expr(declaration.getExpression());
         }
 
-        localVariableTable.add(declaration.getVariable(), (short)code.size(), length, nextVariable);
+        int length = storeLast(type, nextVariable);
 
-        variables.put(declaration.getVariable(), this.nextVariable);
+        localVariableTable.add(declaration.getVariable(), (short)code.size(), (short)3, nextVariable);
 
-        this.nextVariable++;
-        maxLocalVars++;
+        variables.put(declaration.getVariable().getName().getValue(), this.nextVariable);
+
+        nextVariable += length;
+        maxLocalVars += length;
     }
 
     private void assignment(Statement.Assignment assignment) throws CompilerException
     {
-        Variable var = null;
+        String var = null;
         byte index = 0;
-        for (Variable variable : variables.keySet())
+        for (String variable : variables.keySet())
         {
-            if (assignment.getName().getValue().equals(variable.getName().getValue()))
+            if (assignment.getName().getValue().equals(variable))
             {
                 var = variable;
                 index = variables.get(variable);
@@ -226,83 +204,278 @@ public class CodeGenerator
         }
 
         Expression expr = assignment.getExpression();
+        this.expr(expr);
 
-        if (!(expr instanceof Expression.Literal))
-        {
-            this.expr(expr);
-            return;
-        }
-
-        Expression.Literal literal = (Expression.Literal) expr;
-
-        long value = Long.parseLong(literal.getToken().getValue());
-        // NOTE: ONLY SUPPORTS 1 << 63 due to max size of long
-        // TODO: floats
-
-        if (value < 1 << Byte.SIZE)
-        {
-            // TODO: add iconst_n instructions
-            pushSize(1);
-            add(Instruction.bipush, (byte) value);
-            add(Instruction.istore, index);
-            add(Instruction.pop);
-            popSize(1);
-            return;
-        }
-
-        if (value < (1 << Short.SIZE))
-        {
-            pushSize(2);
-            add(Instruction.sipush, (byte) (value & 0xff), (byte) ((value >> 8) & 0xff));
-            add(Instruction.istore, index);
-            add(Instruction.pop);
-            popSize(2);
-            return;
-        }
-
-        if (value < 1 << Integer.SIZE)
-        {
-            short poolIndex = pool.add(new Constant<>(Constant.Kind.INTEGER, (int) value));
-            pushSize(2);
-            add(Instruction.ldc_w, (byte) (poolIndex & 0xff), (byte) ((poolIndex >> 8) & 0xff));
-            add(Instruction.istore, index);
-            add(Instruction.pop);
-            popSize(2);
-            return;
-        }
-
-        if (value < 1 << Long.SIZE)
-        {
-            short poolIndex = pool.add(new Constant<>(Constant.Kind.LONG, value));
-            pushSize(2);
-            add(Instruction.ldc2_w, (byte) (poolIndex & 0xff), (byte) ((poolIndex >> 8) & 0xff));
-            add(Instruction.lstore, index);
-            add(Instruction.pop2);
-            popSize(2);
-            return;
-        }
-
-        throw new UnsupportedOperationException("value too large");
+        storeLast(expr.getType(), index);
     }
 
-    private void pushSize(int size)
+    private int storeLast(Type type, byte index)
     {
-        stackSize += size;
-        if (stackSize > maxStack)
+        String name = type.getName();
+        if (name.equals("u64") || name.equals("s64") || name.equals("f64"))
         {
-            maxStack = stackSize;
+            if (name.startsWith("f"))
+            {
+                // double
+                switch (index)
+                {
+                    case 0: add(Instruction.dstore_0); break;
+                    case 1: add(Instruction.dstore_1); break;
+                    case 2: add(Instruction.dstore_2); break;
+                    case 3: add(Instruction.dstore_3); break;
+                    default: add(Instruction.dstore, index);
+                }
+            }
+            else
+            {
+                // long
+                switch (index)
+                {
+                    case 0: add(Instruction.lstore_0); break;
+                    case 1: add(Instruction.lstore_1); break;
+                    case 2: add(Instruction.lstore_2); break;
+                    case 3: add(Instruction.lstore_3); break;
+                    default: add(Instruction.lstore, index);
+                }
+            }
+            return 2;
         }
+
+        if (name.startsWith("f"))
+        {
+            // float
+            switch (index)
+            {
+                case 0: add(Instruction.fstore_0); break;
+                case 1: add(Instruction.fstore_1); break;
+                case 2: add(Instruction.fstore_2); break;
+                case 3: add(Instruction.fstore_3); break;
+                default: add(Instruction.fstore, index);
+            }
+        }
+        else
+        {
+            // int
+            switch (index)
+            {
+                case 0: add(Instruction.istore_0); break;
+                case 1: add(Instruction.istore_1); break;
+                case 2: add(Instruction.istore_2); break;
+                case 3: add(Instruction.istore_3); break;
+                default: add(Instruction.istore, index);
+            }
+        }
+        return 1;
     }
 
-    private void popSize(int size)
+    private int pushNumber(Type type, String value)
     {
-        assert stackSize >= size;
-        stackSize -= size;
+        if (type.getName().startsWith("f"))
+        {
+            return pushFloat(type, Double.parseDouble(value));
+        }
+
+        return pushInteger(type, Long.parseLong(value));
+    }
+
+    private int pushInteger(Type type, long value)
+    {
+        String name = type.getName();
+
+        if (value <= 1 && (name.equals("s64") || name.equals("u64")))
+        {
+            if (value == 0)
+            {
+                add(Instruction.lconst_0);
+                return 0;
+            }
+            add(Instruction.lconst_1);
+            return 0;
+        }
+
+        if (value <= 5 && !(name.equals("s64") || name.equals("u64")))
+        {
+            switch ((byte)value)
+            {
+                case 0: add(Instruction.iconst_0); return 0;
+                case 1: add(Instruction.iconst_1); return 0;
+                case 2: add(Instruction.iconst_2); return 0;
+                case 3: add(Instruction.iconst_3); return 0;
+                case 4: add(Instruction.iconst_4); return 0;
+                case 5: add(Instruction.iconst_5); return 0;
+            }
+            return 0;
+        }
+
+        short stackSize;
+
+        switch (type.getName())
+        {
+            case "u8":
+            case "s8":
+                stackSize = 1;
+                add(Instruction.bipush, (byte)value);
+                break;
+            case "u16":
+            case "s16":
+                stackSize = 2;
+                add(Instruction.sipush, (byte)(value & 0xff), (byte)((value >> 8) & 0xff));
+                break;
+            case "u32":
+            case "s32":
+                stackSize = 2;
+                short index = pool.add(new Constant<>(Constant.Kind.INTEGER, (int)value));
+                add(Instruction.ldc_w, (byte)(index & 0xff), (byte)((index >> 8) & 0xff));
+                break;
+            case "u64":
+            case "s64":
+                stackSize = 2;
+                index = pool.add(new Constant<>(Constant.Kind.LONG, value));
+                add(Instruction.ldc2_w, (byte)(index & 0xff), (byte)((index >> 8) & 0xff));
+                break;
+            default:
+                throw new UnsupportedOperationException("invalid integer type");
+        }
+
+        if (stackSize > this.stackSize)
+        {
+            this.stackSize = stackSize;
+        }
+
+        return stackSize;
+    }
+
+    private int pushFloat(Type type, double value)
+    {
+        switch (type.getName())
+        {
+            case "f32":
+                short index = pool.add(new Constant<>(Constant.Kind.FLOAT, (float)value));
+                add(Instruction.ldc_w, (byte)(index & 0xff), (byte)((index >> 8) & 0xff));
+                break;
+            case "f64":
+                index = pool.add(new Constant<>(Constant.Kind.DOUBLE, value));
+                add(Instruction.ldc2_w, (byte)(index & 0xff), (byte)((index >> 8) & 0xff));
+                break;
+            default:
+                throw new UnsupportedOperationException("invalid floating point type");
+        }
+
+        if (this.stackSize < 2)
+        {
+            this.stackSize = 2;
+        }
+
+        return 2;
+    }
+
+    public void loadNumber(Type type, byte index)
+    {
+        String name = type.getName();
+
+        short length;
+
+        if (name.equals("u64") || name.equals("s64") || name.equals("f64"))
+        {
+            if (name.startsWith("f"))
+            {
+                // double
+                switch (index)
+                {
+                    case 0: add(Instruction.dload_0); break;
+                    case 1: add(Instruction.dload_1); break;
+                    case 2: add(Instruction.dload_2); break;
+                    case 3: add(Instruction.dload_3); break;
+                    default: add(Instruction.dload, index);
+                }
+            }
+            else
+            {
+                // long
+                switch (index)
+                {
+                    case 0: add(Instruction.lload_0); break;
+                    case 1: add(Instruction.lload_1); break;
+                    case 2: add(Instruction.lload_2); break;
+                    case 3: add(Instruction.lload_3); break;
+                    default: add(Instruction.lload, index);
+                }
+            }
+
+            length = 2;
+        }
+        else
+        {
+            if (name.startsWith("f"))
+            {
+                // float
+                switch (index)
+                {
+                    case 0: add(Instruction.fload_0); break;
+                    case 1: add(Instruction.fload_1); break;
+                    case 2: add(Instruction.fload_2); break;
+                    case 3: add(Instruction.fload_3); break;
+                    default: add(Instruction.fload, index); break;
+                }
+            }
+            else
+            {
+                // int
+                switch (index)
+                {
+                    case 0: add(Instruction.iload_0); break;
+                    case 1: add(Instruction.iload_1); break;
+                    case 2: add(Instruction.iload_2); break;
+                    case 3: add(Instruction.iload_3); break;
+                    default: add(Instruction.iload, index); break;
+                }
+            }
+
+            length = 1;
+        }
+
+        if (this.stackSize < length)
+        {
+            this.stackSize = length;
+        }
     }
 
     private void returnStatement(Statement.Return stmt)
     {
-        expr(stmt.getExpression());
+        Expression expr = stmt.getExpression();
+        if (expr == null)
+        {
+            add(Instruction._return);
+            return;
+        }
+
+        this.expr(expr);
+
+        String name = expr.getType().getName();
+
+        if (name.equals("u64") || name.equals("s64") || name.equals("f64"))
+        {
+            if (name.startsWith("f"))
+            {
+                // double
+                add(Instruction.dreturn);
+                return;
+            }
+
+            // long
+            add(Instruction.lreturn);
+            return;
+        }
+
+        if (name.startsWith("f"))
+        {
+            // floats
+            add(Instruction.freturn);
+            return;
+        }
+
+        // int
+        add(Instruction.ireturn);
     }
 
     private static final Map<String, Map<Operator, Instruction>> opTable = new HashMap<>();
