@@ -2,6 +2,7 @@ package net.seancallahan.opus.compiler.parser;
 
 import net.seancallahan.opus.compiler.CompilerException;
 import net.seancallahan.opus.compiler.Function;
+import net.seancallahan.opus.compiler.Package;
 import net.seancallahan.opus.compiler.Scope;
 import net.seancallahan.opus.compiler.SourceFile;
 import net.seancallahan.opus.compiler.Token;
@@ -23,7 +24,7 @@ public class Parser
 
     private final Map<String, Declaration> declarations = new HashMap<>();
 
-    private String packageName;
+    private Package pkg;
 
     private final Scope global;
 
@@ -42,7 +43,9 @@ public class Parser
     {
         context.expect(TokenType.PACKAGE);
 
-        packageName = context.expect(TokenType.NAME).getValue();
+        String pkgName = context.expect(TokenType.NAME).getValue();
+        // TODO: validate package name; do lookup
+        pkg = new Package(pkgName);
 
         context.expect(TokenType.TERMINATOR);
 
@@ -62,11 +65,6 @@ public class Parser
                     return;
             }
         }
-    }
-
-    public String getPackageName()
-    {
-        return packageName;
     }
 
     private void addDeclaration(Declaration declaration) throws CompilerException
@@ -132,7 +130,7 @@ public class Parser
                 declaration = func;
                 break;
             case LEFT_BRACE:
-                Class clazz = new Class(name);
+                Class clazz = new Class(pkg, name);
                 parseClass(context, clazz);
                 declaration = clazz;
                 break;

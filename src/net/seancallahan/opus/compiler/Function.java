@@ -11,17 +11,15 @@ public class Function implements Declaration
 {
     private final Token name;
 
-    private final List<Variable> parameters = new ArrayList<>();
-    private final List<Variable> returns = new ArrayList<>();
+    private final List<Variable> parameters;
+    private final List<Variable> returns;
     private final Body body;
 
     private final Scope scope;
 
     public Function(Token name, Scope parent)
     {
-        this.name = name;
-        this.scope = new Scope(parent);
-        this.body = new Body(scope);
+        this(name, parent, new Body(parent));
     }
 
     public Function(Token name, Scope parent, Body body)
@@ -29,6 +27,17 @@ public class Function implements Declaration
         this.name = name;
         this.scope = new Scope(parent);
         this.body = body;
+        this.parameters = new ArrayList<>();
+        this.returns = new ArrayList<>();
+    }
+
+    public Function(Function other)
+    {
+        this.name = other.name;
+        this.scope = other.scope;
+        this.body = other.body;
+        this.parameters = other.parameters;
+        this.returns = other.returns;
     }
 
     public Token getName()

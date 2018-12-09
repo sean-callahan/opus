@@ -48,8 +48,8 @@ public class LocalVariableTable extends Attribute
         {
             this.startPc = (short)(position - length);
             this.length = length;
-            this.nameIndex = pool.add(new Constant<>(Constant.Kind.UTF8, variable.getName().getValue()));
-            this.descriptorIndex = pool.add(new Constant<>(Constant.Kind.UTF8, Descriptor.from(variable).toString()));
+            this.nameIndex = pool.add(new Constant.UTF8(pool, variable.getName().getValue()));
+            this.descriptorIndex = pool.add(new Constant.UTF8(pool, Descriptor.from(variable).toString()));
             this.index = index;
         }
 

@@ -13,6 +13,14 @@ public class Token
 
     private final Operator operator;
 
+    public Token(TokenType type, String value)
+    {
+        this.type = type;
+        this.value = value;
+        this.position = null;
+        this.operator = null;
+    }
+
     public Token(TokenType type, String value, SourceFile.Position position, Operator operator)
     {
         this.type = type;

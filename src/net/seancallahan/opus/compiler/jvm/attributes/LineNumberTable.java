@@ -31,7 +31,7 @@ public class LineNumberTable extends Attribute
         buffer.writeShort(lineNumbers.size());
         for (Short lineNumber : lineNumbers.keySet())
         {
-            Short startPc = lineNumbers.get(lineNumber);
+            short startPc = lineNumbers.get(lineNumber);
             buffer.writeShort(startPc);
             buffer.write(lineNumber);
         }

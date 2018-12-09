@@ -145,11 +145,15 @@ public abstract class Statement implements Resolvable
     {
         if (context.has(TokenType.DOT))
         {
-            return new SimpleExpression(context.getCurrentBody(), Expression.member(context, name));
+            Expression expr = Expression.member(context, name);
+            context.expect(TokenType.TERMINATOR);
+            return new SimpleExpression(context.getCurrentBody(), expr);
         }
         else if (context.has(TokenType.LEFT_PAREN))
         {
-            return new SimpleExpression(context.getCurrentBody(), Expression.method(context, null, name));
+            Expression expr = Expression.method(context, null, name);
+            context.expect(TokenType.TERMINATOR);
+            return new SimpleExpression(context.getCurrentBody(), expr);
         }
 
         Token next = context.getIterator().next();

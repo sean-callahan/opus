@@ -9,6 +9,7 @@ import net.seancallahan.opus.compiler.jvm.attributes.LocalVariableTable;
 import net.seancallahan.opus.compiler.parser.Body;
 import net.seancallahan.opus.compiler.parser.Expression;
 import net.seancallahan.opus.compiler.parser.Statement;
+import net.seancallahan.opus.lang.Method;
 import net.seancallahan.opus.lang.Type;
 import net.seancallahan.opus.lang.Variable;
 
@@ -21,6 +22,7 @@ public class CodeGenerator
 {
     // TODO: move this to an Attribute subclass
 
+    private final ClassFile classFile;
     private final Function function;
 
     private short maxStack;
@@ -36,8 +38,9 @@ public class CodeGenerator
     private Map<String, Byte> variables = new HashMap<>();
     private byte nextVariable = 0;
 
-    public CodeGenerator(Code attribute) throws CompilerException
+    public CodeGenerator(ClassFile file, Code attribute) throws CompilerException
     {
+        this.classFile = file;
         this.function = attribute.getFunction();
         this.pool = attribute.getPool();
         this.localVariableTable = new LocalVariableTable(pool);
@@ -88,6 +91,10 @@ public class CodeGenerator
             {
                 assignment(out, (Statement.Assignment)stmt);
             }
+            else if (stmt instanceof Statement.SimpleExpression)
+            {
+                expr(out, ((Statement.SimpleExpression) stmt).getExpression());
+            }
             else if (stmt instanceof Statement.Return)
             {
                 returnStatement(out, (Statement.Return)stmt);
@@ -114,6 +121,11 @@ public class CodeGenerator
         return maxLocalVars;
     }
 
+    private static void add(ByteArrayOutputStream out, Instruction instruction, short index)
+    {
+        add(out, instruction, (byte)((index >> 8) & 0xFF),(byte)(index & 0xFF));
+    }
+
     private static void add(ByteArrayOutputStream out, Instruction instruction, byte... args)
     {
         out.write(instruction.getOpcode());
@@ -136,6 +148,10 @@ public class CodeGenerator
         else if (expr instanceof Expression.Group)
         {
             expr(out, ((Expression.Group) expr).getInner());
+        }
+        else if (expr instanceof Expression.FunctionCall)
+        {
+            functionCall(out, (Expression.FunctionCall) expr);
         }
         else if (expr instanceof Expression.Literal)
         {
@@ -220,6 +236,41 @@ public class CodeGenerator
         storeLast(out, expr.getType(), index);
     }
 
+    private void functionCall(ByteArrayOutputStream out, Expression.FunctionCall call)
+    {
+        if (call.isMethod())
+        {
+            // push 'this' reference to stack
+            if (function instanceof Method)
+            {
+                // use our 'this'
+                add(out, Instruction.aload_0);
+            }
+            else
+            {
+                // TODO: move this to the parser?
+                throw new IllegalStateException("cannot call method from static context");
+            }
+        }
+
+        for (Expression arg : call.getArguments())
+        {
+            this.expr(out, arg);
+        }
+
+        Constant.Reference ref = classFile.getReferences().get(call.getFunction().getValue());
+        short index = pool.search(ref);
+
+        if (call.isMethod())
+        {
+            add(out, Instruction.invokevirtual, index); // TODO: add args
+        }
+        else
+        {
+            add(out, Instruction.invokestatic, index);
+        }
+    }
+
     private static int storeLast(ByteArrayOutputStream out, Type type, byte index)
     {
         String name = type.getName();
@@ -269,6 +320,7 @@ public class CodeGenerator
             // int
             switch (index)
             {
+                case -1: add(out, Instruction.iconst_m1); break;
                 case 0: add(out, Instruction.istore_0); break;
                 case 1: add(out, Instruction.istore_1); break;
                 case 2: add(out, Instruction.istore_2); break;
@@ -335,14 +387,14 @@ public class CodeGenerator
             case "u32":
             case "s32":
                 stackSize = 2;
-                short index = pool.add(new Constant<>(Constant.Kind.INTEGER, (int)value));
-                add(out, Instruction.ldc_w, (byte)(index & 0xff), (byte)((index >> 8) & 0xff));
+                short index = pool.add(new Constant.Integer(pool, (int)value));
+                add(out, Instruction.ldc_w, index);
                 break;
             case "u64":
             case "s64":
                 stackSize = 2;
-                index = pool.add(new Constant<>(Constant.Kind.LONG, value));
-                add(out, Instruction.ldc2_w, (byte)(index & 0xff), (byte)((index >> 8) & 0xff));
+                index = pool.add(new Constant.Long(pool, value));
+                add(out, Instruction.ldc2_w, index);
                 break;
             default:
                 throw new UnsupportedOperationException("invalid integer type");
@@ -361,12 +413,12 @@ public class CodeGenerator
         switch (type.getName())
         {
             case "f32":
-                short index = pool.add(new Constant<>(Constant.Kind.FLOAT, (float)value));
-                add(out, Instruction.ldc_w, (byte)(index & 0xff), (byte)((index >> 8) & 0xff));
+                short index = pool.add(new Constant.Float(pool, (float)value));
+                add(out, Instruction.ldc_w, index);
                 break;
             case "f64":
-                index = pool.add(new Constant<>(Constant.Kind.DOUBLE, value));
-                add(out, Instruction.ldc2_w, (byte)(index & 0xff), (byte)((index >> 8) & 0xff));
+                index = pool.add(new Constant.Double(pool, value));
+                add(out, Instruction.ldc2_w, index);
                 break;
             default:
                 throw new UnsupportedOperationException("invalid floating point type");

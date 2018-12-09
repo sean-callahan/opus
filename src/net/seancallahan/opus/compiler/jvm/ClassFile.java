@@ -2,10 +2,14 @@ package net.seancallahan.opus.compiler.jvm;
 
 import net.seancallahan.opus.compiler.CompilerException;
 import net.seancallahan.opus.compiler.Function;
+import net.seancallahan.opus.compiler.Package;
+import net.seancallahan.opus.compiler.Token;
+import net.seancallahan.opus.compiler.TokenType;
 import net.seancallahan.opus.compiler.jvm.attributes.Attribute;
 import net.seancallahan.opus.compiler.jvm.attributes.Code;
 import net.seancallahan.opus.lang.Class;
 import net.seancallahan.opus.lang.Declaration;
+import net.seancallahan.opus.lang.Field;
 import net.seancallahan.opus.lang.Method;
 import net.seancallahan.opus.lang.Variable;
 
@@ -23,36 +27,33 @@ public class ClassFile
     private static final int minorVersion = 0;
     private static final int majorVersion = 55;
 
+    private Class theClass;
+
     private Variable[] fields;
-    private Function[] functions;
+    private Method[] methods;
 
     private final ConstantPool constantPool = new ConstantPool();
 
     private final ByteArrayOutputStream internalBuffer = new ByteArrayOutputStream();
     private final DataOutputStream buffer = new DataOutputStream(internalBuffer);
 
-    private final ConstantDeclaration initializer = new ConstantDeclaration
-    (
-        constantPool.add(new Constant<>(Constant.Kind.UTF8, "<init>")),
-        constantPool.add(new Constant<>(Constant.Kind.UTF8, "()V"))
-    );
-
     private final int accessFlags;
     private final short thisClass;
     private final short superClass;
 
-    private final Map<Declaration, ConstantDeclaration> declarations = new HashMap<>();
+    private final Constant.MethodRef initializer;
+    private final Map<String, Constant.Reference> references = new HashMap<>();
 
-    public ClassFile(String name, String pkg, Class clazz)
+    public ClassFile(Class clazz)
     {
-        this(name, pkg, clazz.isPublic() ? AccessFlag.PUBLIC : AccessFlag.PRIVATE);
+        this(clazz, clazz.isPublic() ? AccessFlag.PUBLIC : AccessFlag.PRIVATE);
 
-        this.functions = new Function[clazz.getMethods().size()];
-        for (int i = 0; i < functions.length; i++)
+        this.methods = new Method[clazz.getMethods().size()];
+        for (int i = 0; i < methods.length; i++)
         {
             Method method = clazz.getMethods().get(i);
             addDeclaration(method);
-            this.functions[i] = method;
+            this.methods[i] = method;
         }
 
         this.fields = new Variable[clazz.getFields().size()];
@@ -66,29 +67,52 @@ public class ClassFile
 
     public ClassFile(String name, String pkg, List<Function> functions)
     {
-        this(name, pkg, AccessFlag.PUBLIC); // static classes are always public
+        this(new Class(new Package(pkg), new Token(TokenType.NAME, name)) , AccessFlag.PUBLIC); // static classes are always public
 
-        this.functions = new Function[functions.size()];
-        for (int i = 0; i < this.functions.length; i++)
+        this.methods = new Method[functions.size()];
+        for (int i = 0; i < this.methods.length; i++)
         {
             Function function = functions.get(i);
-            addDeclaration(function);
-            this.functions[i] = function;
+            Method method = new Method(function, getTheClass());
+            addDeclaration(method);
+            this.methods[i] = method;
         }
 
         this.fields = new Variable[0];
     }
 
-    private ClassFile(String name, String pkg, short accessFlag)
+    private ClassFile(Class clazz, short accessFlag)
     {
-        short nameIndex = constantPool.add(new Constant<>(Constant.Kind.UTF8, pkg + "/" + name));
-        this.thisClass = constantPool.add(new Constant<>(Constant.Kind.CLASS, nameIndex));
+        this.theClass = clazz;
+
+        this.thisClass = constantPool.add(new Constant.Class(constantPool, clazz));
 
         // TODO: write opus base Object class
-        short superIndex = constantPool.add(new Constant<>(Constant.Kind.UTF8, "java/lang/Object"));
-        this.superClass = constantPool.add(new Constant<>(Constant.Kind.CLASS, superIndex));
+        Package basePkg = new Package("java/lang");
+        Class base = new Class(basePkg, new Token(TokenType.NAME, "Object"));
+
+        Function init = new Function(new Token(TokenType.NAME, "<init>"), null);
+
+        this.initializer = new Constant.MethodRef(constantPool, new Method(init, base));
+
+        this.superClass = constantPool.add(new Constant.Class(constantPool, base));
 
         this.accessFlags = accessFlag;
+    }
+
+    public ConstantPool getConstantPool()
+    {
+        return constantPool;
+    }
+
+    public Class getTheClass()
+    {
+        return theClass;
+    }
+
+    public Map<String, Constant.Reference> getReferences()
+    {
+        return references;
     }
 
     public void write(DataOutputStream out) throws IOException, CompilerException
@@ -106,17 +130,17 @@ public class ClassFile
         buffer.writeShort(fields.length);
         for (Variable field : fields)
         {
-            writeField(buffer, field, declarations.get(field));
+            writeField(buffer, field, references.get(field.getName().getValue()));
         }
 
-        buffer.writeShort(functions.length + 1); // +1 for the constructor
+        buffer.writeShort(methods.length + 1); // +1 for the constructor
 
         // JVM requires a constructor, so make an empty one.
         writeFunction(buffer, null, initializer);
 
-        for (Function function : functions)
+        for (Function function : methods)
         {
-            writeFunction(buffer, function, declarations.get(function));
+            writeFunction(buffer, function, references.get(function.getName().getValue()));
         }
 
         buffer.writeShort(0); // attributes_count
@@ -128,62 +152,56 @@ public class ClassFile
 
     private void addDeclaration(Declaration declaration)
     {
-        short name = constantPool.add(new Constant<>(Constant.Kind.UTF8, declaration.getName().getValue()));
-        short descriptor = constantPool.add(new Constant<>(Constant.Kind.UTF8, Descriptor.from(declaration).toString()));
+        Constant.Reference ref;
+        if (declaration instanceof Method)
+        {
+            ref = new Constant.MethodRef(constantPool, (Method) declaration);
+        }
+        else if (declaration instanceof Field)
+        {
+            ref = new Constant.FieldRef(constantPool, (Field) declaration);
+        }
+        else
+        {
+            throw new UnsupportedOperationException();
+        }
 
-        declarations.put(declaration, new ConstantDeclaration(name, descriptor));
+        references.put(declaration.getName().getValue(), ref);
+        constantPool.add(ref);
     }
 
-    private void writeField(DataOutputStream out, Variable field, ConstantDeclaration cd) throws IOException
+    private void writeField(DataOutputStream out, Variable field, Constant.Reference reference) throws IOException
     {
         out.writeShort(AccessFlag.PUBLIC);
-        out.writeShort(cd.getNameIndex());
-        out.writeShort(cd.getDescriptorIndex());
+        out.writeShort(reference.getNameAndType().getNameIndex());
+        out.writeShort(reference.getNameAndType().getDescriptorIndex());
 
         out.writeShort(0); // attributes
     }
 
-    private void writeFunction(DataOutputStream out, Function function, ConstantDeclaration cd) throws IOException, CompilerException
+    private void writeFunction(DataOutputStream out, Function function, Constant.Reference reference) throws IOException, CompilerException
     {
         short accessFlags = AccessFlag.PRIVATE;
         if (function == null || function.isPublic())
         {
             accessFlags = AccessFlag.PUBLIC;
         }
+        if (!(function instanceof Method))
+        {
+            accessFlags |= AccessFlag.STATIC;
+        }
 
         out.writeShort(accessFlags);
-        out.writeShort(cd.getNameIndex());
-        out.writeShort(cd.getDescriptorIndex());
+        out.writeShort(reference.getNameAndType().getNameIndex());
+        out.writeShort(reference.getNameAndType().getDescriptorIndex());
 
         List<Attribute> attributes = new ArrayList<>();
-        attributes.add(new Code(constantPool, function));
+        attributes.add(new Code(this, function));
 
         out.writeShort(attributes.size()); // attributes_count
         for (Attribute attribute : attributes)
         {
             attribute.write(out);
-        }
-    }
-
-    private class ConstantDeclaration
-    {
-        private final short nameIndex;
-        private final short descriptorIndex;
-
-        private ConstantDeclaration(short nameIndex, short descriptorIndex)
-        {
-            this.nameIndex = nameIndex;
-            this.descriptorIndex = descriptorIndex;
-        }
-
-        public short getNameIndex()
-        {
-            return nameIndex;
-        }
-
-        public short getDescriptorIndex()
-        {
-            return descriptorIndex;
         }
     }
 }

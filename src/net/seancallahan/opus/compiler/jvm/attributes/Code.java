@@ -2,6 +2,7 @@ package net.seancallahan.opus.compiler.jvm.attributes;
 
 import net.seancallahan.opus.compiler.CompilerException;
 import net.seancallahan.opus.compiler.Function;
+import net.seancallahan.opus.compiler.jvm.ClassFile;
 import net.seancallahan.opus.compiler.jvm.CodeGenerator;
 import net.seancallahan.opus.compiler.jvm.ConstantPool;
 
@@ -22,13 +23,13 @@ public class Code extends Attribute
 
     private final List<Attribute> attributes = new ArrayList<>();
 
-    public Code(ConstantPool pool, Function function) throws CompilerException
+    public Code(ClassFile file, Function function) throws CompilerException
     {
-        super(pool, "Code");
+        super(file.getConstantPool(), "Code");
 
         this.function = function;
 
-        CodeGenerator gen = new CodeGenerator(this);
+        CodeGenerator gen = new CodeGenerator(file, this);
 
         this.maxStack = gen.getMaxStack();
         this.maxLocals = gen.getMaxLocalVars();

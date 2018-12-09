@@ -72,7 +72,7 @@ public class SourceFile
             {
                 Class clazz = (Class)declaration;
                 String name = clazz.getName().getValue();
-                createClassFile(basePath, fileName + "_" + name, new ClassFile(name, "test", clazz));
+                createClassFile(basePath, fileName + "_" + name, new ClassFile(clazz));
             }
             else if (declaration instanceof Function && !(declaration instanceof Method))
             {

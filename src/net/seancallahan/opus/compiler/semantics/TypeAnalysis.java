@@ -54,6 +54,31 @@ public class TypeAnalysis implements Resolver
         {
             type = checkType(((Expression.Group)expression).getInner());
         }
+        else if (expression instanceof Expression.FunctionCall)
+        {
+            Expression.FunctionCall expr = (Expression.FunctionCall) expression;
+
+            Function function = getFunction(expr);
+
+            if (function.getParameters().size() != expr.getArguments().size())
+            {
+                throw new IllegalArgumentException("invalid argument count to function " + function.getName().getValue());
+            }
+
+            for (int i = 0; i < function.getParameters().size(); i++)
+            {
+                Variable param = function.getParameters().get(i);
+                Expression arg = expr.getArguments().get(i);
+                Type argType = checkType(arg);
+                if (!param.getType().equals(argType))
+                {
+                    throw new IllegalArgumentException("wrong argument type");
+                }
+            }
+
+            // TODO: support multi returns
+            type = function.getReturns().get(0).getType();
+        }
         else if (expression instanceof Expression.Binary)
         {
             Expression.Binary binary = (Expression.Binary)expression;
@@ -81,10 +106,6 @@ public class TypeAnalysis implements Resolver
                 }
                 type = leftType;
             }
-        }
-        else if (expression instanceof Expression.FunctionCall)
-        {
-            type = null;
         }
         else
         {
@@ -164,6 +185,11 @@ public class TypeAnalysis implements Resolver
         }
 
         return new Type("string");
+    }
+
+    private static Function getFunction(Expression.FunctionCall expr)
+    {
+        return (Function) expr.getScope().get(expr.getFunction().getValue());
     }
 
     @Override

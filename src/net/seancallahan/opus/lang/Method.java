@@ -4,7 +4,7 @@ import net.seancallahan.opus.compiler.Function;
 import net.seancallahan.opus.compiler.Scope;
 import net.seancallahan.opus.compiler.Token;
 
-public final class Method extends Function
+public final class Method extends Function implements Member
 {
     private Class parent;
 
@@ -20,7 +20,7 @@ public final class Method extends Function
 
     public Method(Function function, Class parent)
     {
-        super(function.getName(), function.getScope(), function.getBody());
+        super(function);
         this.parentName = parent.getName();
         this.parent = parent;
     }

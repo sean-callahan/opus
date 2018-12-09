@@ -11,33 +11,51 @@ public class ConstantPool
 
     public short add(Constant item)
     {
-        for (Constant in : pool)
+        for (short index = 0; index < pool.size(); index++)
         {
-            if (in.getValue().equals(item.getValue()))
+            Constant constant = pool.get(index);
+            if (constant.equals(item))
             {
-                return (short)(pool.indexOf(item)+1);
+                return index;
             }
         }
-
         pool.add(item);
-        return (short)(pool.indexOf(item)+1);
+        return (short)pool.size();
     }
 
     public Constant get(int index)
     {
-        return pool.get(index);
+        return pool.get(index-1);
+    }
+
+    public short search(Constant constant)
+    {
+        return (short)(pool.indexOf(constant)+1);
+    }
+
+    public short search(Constant.Kind kind, Object value)
+    {
+        for (short i = 1; i <= pool.size(); i++)
+        {
+            Constant constant = pool.get(i);
+            if (constant.getKind() != kind)
+            {
+                continue;
+            }
+            if (constant.getValue().equals(value))
+            {
+                return i;
+            }
+        }
+        return -1;
     }
 
     public void write(DataOutputStream out) throws IOException
     {
-        out.writeShort(pool.size()+1);
-
+        out.writeShort(pool.size());
         for (Constant c : pool)
         {
-            if (c != null)
-            {
-                c.write(out);
-            }
+            c.write(out);
         }
     }
 

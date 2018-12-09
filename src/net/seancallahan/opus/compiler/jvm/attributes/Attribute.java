@@ -18,7 +18,7 @@ public abstract class Attribute
     protected Attribute(ConstantPool pool, String name)
     {
         this.pool = pool;
-        this.nameIndex = pool.add(new Constant<>(Constant.Kind.UTF8, name));
+        this.nameIndex = pool.add(new Constant.UTF8(pool, name));
     }
 
     public void write(DataOutputStream out) throws IOException
