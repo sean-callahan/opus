@@ -223,7 +223,7 @@ public class CodeGenerator
     private static int storeLast(ByteArrayOutputStream out, Type type, byte index)
     {
         String name = type.getName();
-        if (name.equals("u64") || name.equals("s64") || name.equals("f64"))
+        if (name.endsWith("64"))
         {
             if (name.startsWith("f"))
             {
@@ -293,7 +293,7 @@ public class CodeGenerator
     {
         String name = type.getName();
 
-        if (value <= 1 && (name.equals("s64") || name.equals("u64")))
+        if (value <= 1 && name.endsWith("64"))
         {
             if (value == 0)
             {
@@ -304,7 +304,7 @@ public class CodeGenerator
             return 0;
         }
 
-        if (value <= 5 && !(name.equals("s64") || name.equals("u64")))
+        if (value <= 5 && !name.endsWith("64"))
         {
             switch ((byte)value)
             {
@@ -386,7 +386,7 @@ public class CodeGenerator
 
         short length;
 
-        if (name.equals("u64") || name.equals("s64") || name.equals("f64"))
+        if (name.endsWith("64"))
         {
             if (name.startsWith("f"))
             {
@@ -464,7 +464,7 @@ public class CodeGenerator
 
         String name = expr.getType().getName();
 
-        if (name.equals("u64") || name.equals("s64") || name.equals("f64"))
+        if (name.endsWith("64"))
         {
             if (name.startsWith("f"))
             {
