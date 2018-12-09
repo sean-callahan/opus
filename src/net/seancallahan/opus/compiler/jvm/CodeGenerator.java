@@ -1,14 +1,16 @@
 package net.seancallahan.opus.compiler.jvm;
 
 import net.seancallahan.opus.compiler.CompilerException;
+import net.seancallahan.opus.compiler.Function;
 import net.seancallahan.opus.compiler.Operator;
 import net.seancallahan.opus.compiler.jvm.attributes.Code;
 import net.seancallahan.opus.compiler.jvm.attributes.LineNumberTable;
 import net.seancallahan.opus.compiler.jvm.attributes.LocalVariableTable;
+import net.seancallahan.opus.compiler.parser.Body;
 import net.seancallahan.opus.compiler.parser.Expression;
 import net.seancallahan.opus.compiler.parser.Statement;
-import net.seancallahan.opus.lang.Method;
 import net.seancallahan.opus.lang.Type;
+import net.seancallahan.opus.lang.Variable;
 
 import java.io.ByteArrayOutputStream;
 import java.util.HashMap;
@@ -19,6 +21,8 @@ public class CodeGenerator
 {
     // TODO: move this to an Attribute subclass
 
+    private final Function function;
+
     private short maxStack;
     private short stackSize;
     private short maxLocalVars;
@@ -27,30 +31,49 @@ public class CodeGenerator
     private final ByteArrayOutputStream code;
 
     private final LocalVariableTable localVariableTable;
+    private final LineNumberTable lineNumberTable;
 
     private Map<String, Byte> variables = new HashMap<>();
-    private byte nextVariable = 1;
+    private byte nextVariable = 0;
 
     public CodeGenerator(Code attribute) throws CompilerException
     {
-        Method method = attribute.getMethod();
-
+        this.function = attribute.getFunction();
         this.pool = attribute.getPool();
-
         this.localVariableTable = new LocalVariableTable(pool);
-        LineNumberTable lineNumberTable = new LineNumberTable(pool);
-
+        this.lineNumberTable = new LineNumberTable(pool);
         this.code = attribute.getCode();
 
-        if (method == null)
+        if (function == null)
         {
             return;
+        }
+
+        for (Variable param : function.getParameters())
+        {
+            maxLocalVars += param.getType().getStackSize();
+            variables.put(param.getName().getValue(), this.nextVariable);
+            nextVariable++;
         }
 
         attribute.getAttributes().add(localVariableTable);
         attribute.getAttributes().add(lineNumberTable);
 
-        for (Statement stmt : method.getBody().getStatements())
+        generateBody(code, function.getBody());
+
+        List<Statement> stmts = function.getBody().getStatements();
+
+        Statement last = stmts.size() > 1 ? stmts.get(stmts.size()-1) : null;
+
+        if (last != null && !(last instanceof Statement.Return))
+        {
+            add(code, Instruction._return);
+        }
+    }
+
+    private void generateBody(ByteArrayOutputStream out, Body body) throws CompilerException
+    {
+        for (Statement stmt : body.getStatements())
         {
             if (stmt == null)
             {
@@ -59,15 +82,15 @@ public class CodeGenerator
 
             if (stmt instanceof Statement.VariableDeclaration)
             {
-                variableDeclaration((Statement.VariableDeclaration)stmt);
+                variableDeclaration(out, (Statement.VariableDeclaration)stmt);
             }
             else if (stmt instanceof Statement.Assignment)
             {
-                assignment((Statement.Assignment)stmt);
+                assignment(out, (Statement.Assignment)stmt);
             }
             else if (stmt instanceof Statement.Return)
             {
-                returnStatement((Statement.Return)stmt);
+                returnStatement(out, (Statement.Return)stmt);
             }
 
             if (stmt.getStartPosition() != null)
@@ -78,15 +101,6 @@ public class CodeGenerator
                     lineNumberTable.add(line, (short)code.size());
                 }
             }
-        }
-
-        List<Statement> stmts = method.getBody().getStatements();
-
-        Statement last = stmts.size() > 1 ? stmts.get(stmts.size()-1) : null;
-
-        if (last != null && !(last instanceof Statement.Return))
-        {
-            add(Instruction._return);
         }
     }
 
@@ -100,65 +114,62 @@ public class CodeGenerator
         return maxLocalVars;
     }
 
-    private void add(Instruction instruction, byte... args)
+    private static void add(ByteArrayOutputStream out, Instruction instruction, byte... args)
     {
-        code.write(instruction.getOpcode());
-        for (byte arg : args)
-        {
-            code.write(arg);
-        }
+        out.write(instruction.getOpcode());
+        out.write(args, 0, args.length);
     }
 
-    private void expr(Expression expr)
+    private void expr(ByteArrayOutputStream out, Expression expr)
     {
         // NOTE: the expression _should_ have matching types at this point.
         // TODO: convert non-matching types
 
         if (expr instanceof Expression.Binary)
         {
-            binary((Expression.Binary) expr);
+            binary(out, (Expression.Binary) expr);
         }
         else if (expr instanceof Expression.Unary)
         {
-            unary((Expression.Unary) expr);
+            unary(out, (Expression.Unary) expr);
         }
         else if (expr instanceof Expression.Group)
         {
-            expr(((Expression.Group) expr).getInner());
+            expr(out, ((Expression.Group) expr).getInner());
         }
         else if (expr instanceof Expression.Literal)
         {
-            literal((Expression.Literal) expr);
+            literal(out, (Expression.Literal) expr);
         }
     }
 
-    private void binary(Expression.Binary expr)
+    private void binary(ByteArrayOutputStream out, Expression.Binary expr)
     {
-        expr(expr.getLeft());
-        expr(expr.getRight());
-        add(getOpInstruction(expr.getType(), expr.getOperator()));
+        expr(out, expr.getLeft());
+        expr(out, expr.getRight());
+        add(out, getOpInstruction(expr.getLeft().getType(), expr.getOperator()));
     }
 
-    private void unary(Expression.Unary expr)
+    private void unary(ByteArrayOutputStream out, Expression.Unary expr)
     {
-        expr(expr.getRight());
-        add(getOpInstruction(expr.getType(), expr.getOperator()));
+        expr(out, expr.getRight());
+        add(out, getOpInstruction(expr.getType(), expr.getOperator()));
     }
 
-    private void literal(Expression.Literal expr)
+    private void literal(ByteArrayOutputStream out, Expression.Literal expr)
     {
         String text = expr.getToken().getValue();
 
         if (variables.containsKey(text))
         {
-            loadNumber(expr.getType(), variables.get(text));
+            loadNumber(out, expr.getType(), variables.get(text));
             return;
         }
 
-        pushNumber(expr.getType(), expr.getToken().getValue());
+        pushNumber(out, expr.getType(), expr.getToken().getValue());
     }
 
-    private void variableDeclaration(Statement.VariableDeclaration declaration)
+    private void variableDeclaration(ByteArrayOutputStream out, Statement.VariableDeclaration declaration)
     {
         Type type = declaration.getVariable().getType();
         if (!type.isPrimitive())
@@ -168,14 +179,14 @@ public class CodeGenerator
 
         if (declaration.getExpression() == null)
         {
-            pushNumber(type, "0");
+            pushNumber(out, type, "0");
         }
         else
         {
-            expr(declaration.getExpression());
+            expr(out, declaration.getExpression());
         }
 
-        int length = storeLast(type, nextVariable);
+        int length = storeLast(out, type, nextVariable);
 
         localVariableTable.add(declaration.getVariable(), (short)code.size(), (short)3, nextVariable);
 
@@ -185,7 +196,7 @@ public class CodeGenerator
         maxLocalVars += length;
     }
 
-    private void assignment(Statement.Assignment assignment) throws CompilerException
+    private void assignment(ByteArrayOutputStream out, Statement.Assignment assignment) throws CompilerException
     {
         String var = null;
         byte index = 0;
@@ -204,12 +215,12 @@ public class CodeGenerator
         }
 
         Expression expr = assignment.getExpression();
-        this.expr(expr);
+        this.expr(out, expr);
 
-        storeLast(expr.getType(), index);
+        storeLast(out, expr.getType(), index);
     }
 
-    private int storeLast(Type type, byte index)
+    private static int storeLast(ByteArrayOutputStream out, Type type, byte index)
     {
         String name = type.getName();
         if (name.equals("u64") || name.equals("s64") || name.equals("f64"))
@@ -219,11 +230,11 @@ public class CodeGenerator
                 // double
                 switch (index)
                 {
-                    case 0: add(Instruction.dstore_0); break;
-                    case 1: add(Instruction.dstore_1); break;
-                    case 2: add(Instruction.dstore_2); break;
-                    case 3: add(Instruction.dstore_3); break;
-                    default: add(Instruction.dstore, index);
+                    case 0: add(out, Instruction.dstore_0); break;
+                    case 1: add(out, Instruction.dstore_1); break;
+                    case 2: add(out, Instruction.dstore_2); break;
+                    case 3: add(out, Instruction.dstore_3); break;
+                    default: add(out, Instruction.dstore, index);
                 }
             }
             else
@@ -231,11 +242,11 @@ public class CodeGenerator
                 // long
                 switch (index)
                 {
-                    case 0: add(Instruction.lstore_0); break;
-                    case 1: add(Instruction.lstore_1); break;
-                    case 2: add(Instruction.lstore_2); break;
-                    case 3: add(Instruction.lstore_3); break;
-                    default: add(Instruction.lstore, index);
+                    case 0: add(out, Instruction.lstore_0); break;
+                    case 1: add(out, Instruction.lstore_1); break;
+                    case 2: add(out, Instruction.lstore_2); break;
+                    case 3: add(out, Instruction.lstore_3); break;
+                    default: add(out, Instruction.lstore, index);
                 }
             }
             return 2;
@@ -246,11 +257,11 @@ public class CodeGenerator
             // float
             switch (index)
             {
-                case 0: add(Instruction.fstore_0); break;
-                case 1: add(Instruction.fstore_1); break;
-                case 2: add(Instruction.fstore_2); break;
-                case 3: add(Instruction.fstore_3); break;
-                default: add(Instruction.fstore, index);
+                case 0: add(out, Instruction.fstore_0); break;
+                case 1: add(out, Instruction.fstore_1); break;
+                case 2: add(out, Instruction.fstore_2); break;
+                case 3: add(out, Instruction.fstore_3); break;
+                default: add(out, Instruction.fstore, index);
             }
         }
         else
@@ -258,27 +269,27 @@ public class CodeGenerator
             // int
             switch (index)
             {
-                case 0: add(Instruction.istore_0); break;
-                case 1: add(Instruction.istore_1); break;
-                case 2: add(Instruction.istore_2); break;
-                case 3: add(Instruction.istore_3); break;
-                default: add(Instruction.istore, index);
+                case 0: add(out, Instruction.istore_0); break;
+                case 1: add(out, Instruction.istore_1); break;
+                case 2: add(out, Instruction.istore_2); break;
+                case 3: add(out, Instruction.istore_3); break;
+                default: add(out, Instruction.istore, index);
             }
         }
         return 1;
     }
 
-    private int pushNumber(Type type, String value)
+    private int pushNumber(ByteArrayOutputStream out, Type type, String value)
     {
         if (type.getName().startsWith("f"))
         {
-            return pushFloat(type, Double.parseDouble(value));
+            return pushFloat(out, type, Double.parseDouble(value));
         }
 
-        return pushInteger(type, Long.parseLong(value));
+        return pushInteger(out, type, Long.parseLong(value));
     }
 
-    private int pushInteger(Type type, long value)
+    private int pushInteger(ByteArrayOutputStream out, Type type, long value)
     {
         String name = type.getName();
 
@@ -286,10 +297,10 @@ public class CodeGenerator
         {
             if (value == 0)
             {
-                add(Instruction.lconst_0);
+                add(out, Instruction.lconst_0);
                 return 0;
             }
-            add(Instruction.lconst_1);
+            add(out, Instruction.lconst_1);
             return 0;
         }
 
@@ -297,12 +308,12 @@ public class CodeGenerator
         {
             switch ((byte)value)
             {
-                case 0: add(Instruction.iconst_0); return 0;
-                case 1: add(Instruction.iconst_1); return 0;
-                case 2: add(Instruction.iconst_2); return 0;
-                case 3: add(Instruction.iconst_3); return 0;
-                case 4: add(Instruction.iconst_4); return 0;
-                case 5: add(Instruction.iconst_5); return 0;
+                case 0: add(out, Instruction.iconst_0); return 0;
+                case 1: add(out, Instruction.iconst_1); return 0;
+                case 2: add(out, Instruction.iconst_2); return 0;
+                case 3: add(out, Instruction.iconst_3); return 0;
+                case 4: add(out, Instruction.iconst_4); return 0;
+                case 5: add(out, Instruction.iconst_5); return 0;
             }
             return 0;
         }
@@ -314,24 +325,24 @@ public class CodeGenerator
             case "u8":
             case "s8":
                 stackSize = 1;
-                add(Instruction.bipush, (byte)value);
+                add(out, Instruction.bipush, (byte)value);
                 break;
             case "u16":
             case "s16":
                 stackSize = 2;
-                add(Instruction.sipush, (byte)(value & 0xff), (byte)((value >> 8) & 0xff));
+                add(out, Instruction.sipush, (byte)(value & 0xff), (byte)((value >> 8) & 0xff));
                 break;
             case "u32":
             case "s32":
                 stackSize = 2;
                 short index = pool.add(new Constant<>(Constant.Kind.INTEGER, (int)value));
-                add(Instruction.ldc_w, (byte)(index & 0xff), (byte)((index >> 8) & 0xff));
+                add(out, Instruction.ldc_w, (byte)(index & 0xff), (byte)((index >> 8) & 0xff));
                 break;
             case "u64":
             case "s64":
                 stackSize = 2;
                 index = pool.add(new Constant<>(Constant.Kind.LONG, value));
-                add(Instruction.ldc2_w, (byte)(index & 0xff), (byte)((index >> 8) & 0xff));
+                add(out, Instruction.ldc2_w, (byte)(index & 0xff), (byte)((index >> 8) & 0xff));
                 break;
             default:
                 throw new UnsupportedOperationException("invalid integer type");
@@ -345,17 +356,17 @@ public class CodeGenerator
         return stackSize;
     }
 
-    private int pushFloat(Type type, double value)
+    private int pushFloat(ByteArrayOutputStream out, Type type, double value)
     {
         switch (type.getName())
         {
             case "f32":
                 short index = pool.add(new Constant<>(Constant.Kind.FLOAT, (float)value));
-                add(Instruction.ldc_w, (byte)(index & 0xff), (byte)((index >> 8) & 0xff));
+                add(out, Instruction.ldc_w, (byte)(index & 0xff), (byte)((index >> 8) & 0xff));
                 break;
             case "f64":
                 index = pool.add(new Constant<>(Constant.Kind.DOUBLE, value));
-                add(Instruction.ldc2_w, (byte)(index & 0xff), (byte)((index >> 8) & 0xff));
+                add(out, Instruction.ldc2_w, (byte)(index & 0xff), (byte)((index >> 8) & 0xff));
                 break;
             default:
                 throw new UnsupportedOperationException("invalid floating point type");
@@ -369,7 +380,7 @@ public class CodeGenerator
         return 2;
     }
 
-    public void loadNumber(Type type, byte index)
+    public void loadNumber(ByteArrayOutputStream out, Type type, byte index)
     {
         String name = type.getName();
 
@@ -382,11 +393,11 @@ public class CodeGenerator
                 // double
                 switch (index)
                 {
-                    case 0: add(Instruction.dload_0); break;
-                    case 1: add(Instruction.dload_1); break;
-                    case 2: add(Instruction.dload_2); break;
-                    case 3: add(Instruction.dload_3); break;
-                    default: add(Instruction.dload, index);
+                    case 0: add(out, Instruction.dload_0); break;
+                    case 1: add(out, Instruction.dload_1); break;
+                    case 2: add(out, Instruction.dload_2); break;
+                    case 3: add(out, Instruction.dload_3); break;
+                    default: add(out, Instruction.dload, index);
                 }
             }
             else
@@ -394,11 +405,11 @@ public class CodeGenerator
                 // long
                 switch (index)
                 {
-                    case 0: add(Instruction.lload_0); break;
-                    case 1: add(Instruction.lload_1); break;
-                    case 2: add(Instruction.lload_2); break;
-                    case 3: add(Instruction.lload_3); break;
-                    default: add(Instruction.lload, index);
+                    case 0: add(out, Instruction.lload_0); break;
+                    case 1: add(out, Instruction.lload_1); break;
+                    case 2: add(out, Instruction.lload_2); break;
+                    case 3: add(out, Instruction.lload_3); break;
+                    default: add(out, Instruction.lload, index);
                 }
             }
 
@@ -411,11 +422,11 @@ public class CodeGenerator
                 // float
                 switch (index)
                 {
-                    case 0: add(Instruction.fload_0); break;
-                    case 1: add(Instruction.fload_1); break;
-                    case 2: add(Instruction.fload_2); break;
-                    case 3: add(Instruction.fload_3); break;
-                    default: add(Instruction.fload, index); break;
+                    case 0: add(out, Instruction.fload_0); break;
+                    case 1: add(out, Instruction.fload_1); break;
+                    case 2: add(out, Instruction.fload_2); break;
+                    case 3: add(out, Instruction.fload_3); break;
+                    default: add(out, Instruction.fload, index); break;
                 }
             }
             else
@@ -423,11 +434,11 @@ public class CodeGenerator
                 // int
                 switch (index)
                 {
-                    case 0: add(Instruction.iload_0); break;
-                    case 1: add(Instruction.iload_1); break;
-                    case 2: add(Instruction.iload_2); break;
-                    case 3: add(Instruction.iload_3); break;
-                    default: add(Instruction.iload, index); break;
+                    case 0: add(out, Instruction.iload_0); break;
+                    case 1: add(out, Instruction.iload_1); break;
+                    case 2: add(out, Instruction.iload_2); break;
+                    case 3: add(out, Instruction.iload_3); break;
+                    default: add(out, Instruction.iload, index); break;
                 }
             }
 
@@ -440,16 +451,16 @@ public class CodeGenerator
         }
     }
 
-    private void returnStatement(Statement.Return stmt)
+    private void returnStatement(ByteArrayOutputStream out, Statement.Return stmt)
     {
         Expression expr = stmt.getExpression();
         if (expr == null)
         {
-            add(Instruction._return);
+            add(out, Instruction._return);
             return;
         }
 
-        this.expr(expr);
+        this.expr(out, expr);
 
         String name = expr.getType().getName();
 
@@ -458,24 +469,24 @@ public class CodeGenerator
             if (name.startsWith("f"))
             {
                 // double
-                add(Instruction.dreturn);
+                add(out, Instruction.dreturn);
                 return;
             }
 
             // long
-            add(Instruction.lreturn);
+            add(out, Instruction.lreturn);
             return;
         }
 
         if (name.startsWith("f"))
         {
             // floats
-            add(Instruction.freturn);
+            add(out, Instruction.freturn);
             return;
         }
 
         // int
-        add(Instruction.ireturn);
+        add(out, Instruction.ireturn);
     }
 
     private static final Map<String, Map<Operator, Instruction>> opTable = new HashMap<>();

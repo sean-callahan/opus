@@ -1,9 +1,9 @@
 package net.seancallahan.opus.compiler.jvm.attributes;
 
 import net.seancallahan.opus.compiler.CompilerException;
+import net.seancallahan.opus.compiler.Function;
 import net.seancallahan.opus.compiler.jvm.CodeGenerator;
 import net.seancallahan.opus.compiler.jvm.ConstantPool;
-import net.seancallahan.opus.lang.Method;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -13,7 +13,7 @@ import java.util.List;
 
 public class Code extends Attribute
 {
-    private final Method method;
+    private final Function function;
 
     private final short maxStack;
     private final short maxLocals;
@@ -22,20 +22,21 @@ public class Code extends Attribute
 
     private final List<Attribute> attributes = new ArrayList<>();
 
-    public Code(ConstantPool pool, Method method) throws CompilerException
+    public Code(ConstantPool pool, Function function) throws CompilerException
     {
         super(pool, "Code");
 
-        this.method = method;
+        this.function = function;
 
         CodeGenerator gen = new CodeGenerator(this);
+
         this.maxStack = gen.getMaxStack();
         this.maxLocals = gen.getMaxLocalVars();
     }
 
-    public Method getMethod()
+    public Function getFunction()
     {
-        return method;
+        return function;
     }
 
     public List<Attribute> getAttributes()

@@ -20,6 +20,11 @@ public class Constant<T>
         writeValue(out);
     }
 
+    public Kind getKind()
+    {
+        return kind;
+    }
+
     public T getValue()
     {
         return value;

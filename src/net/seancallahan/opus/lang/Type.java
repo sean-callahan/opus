@@ -9,7 +9,7 @@ public class Type
     private final boolean primitive;
     private static final String[] primitives = new String[]
     {
-        "bool", "string", "u8", "u16", "u32", "u64",
+        "bool", "string", /*"u8", "u16", "u32", "u64",*/ // TODO: bring back unsigned
         "s8", "s16", "s32", "s64", "f32", "f64",
     };
 
@@ -50,6 +50,15 @@ public class Type
     public boolean isPrimitive()
     {
         return primitive;
+    }
+
+    public int getStackSize()
+    {
+        if (isPrimitive() && name.endsWith("64"))
+        {
+            return 2;
+        }
+        return 1;
     }
 
     @Override

@@ -7,7 +7,7 @@ Basic.Foo :: () -> s32 {
     b := a;
     c := b;
 
-    if a < (b < c) || (a == b) || !(b == c) {
+    if (b < c) || (a == b) || (b == c) {
         a = 5;
     }
 

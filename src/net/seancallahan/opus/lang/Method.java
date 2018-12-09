@@ -44,7 +44,12 @@ public final class Method extends Function
     @Override
     public String toString()
     {
-        return String.format("%s.%s", getParentName().getValue(), super.toString());
+        String parent = "[static]";
+        if (getParentName() != null)
+        {
+            parent = getParentName().getValue();
+        }
+        return String.format("%s.%s", parent, super.toString());
     }
 
 }

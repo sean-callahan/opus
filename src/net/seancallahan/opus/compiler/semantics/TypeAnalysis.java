@@ -57,15 +57,30 @@ public class TypeAnalysis implements Resolver
         else if (expression instanceof Expression.Binary)
         {
             Expression.Binary binary = (Expression.Binary)expression;
-            Type left = checkType(binary.getLeft());
-            Type right = checkType(binary.getRight());
 
-            if (!left.equals(right))
+            Expression left = binary.getLeft();
+            Expression right = binary.getRight();
+
+            Type leftType = checkType(left);
+            Type rightType = checkType(right);
+
+
+            if (left instanceof Expression.Literal && right instanceof Expression.Literal)
             {
-                throw new SyntaxException("incompatible types in expression");
+                if (!leftType.equals(rightType))
+                {
+                    throw new SyntaxException("incompatible types in expression", ((Expression.Literal) left).getToken());
+                }
+                type = new Type("bool");
             }
-
-            type = left;
+            else
+            {
+                if (!(leftType.getName().equals("bool") && rightType.getName().equals("bool")))
+                {
+                    throw new SyntaxException("can only make comparisons with two boolean expressions");
+                }
+                type = leftType;
+            }
         }
         else if (expression instanceof Expression.FunctionCall)
         {

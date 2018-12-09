@@ -1,6 +1,7 @@
 package net.seancallahan.opus.compiler.jvm;
 
 import net.seancallahan.opus.compiler.CompilerException;
+import net.seancallahan.opus.compiler.Function;
 import net.seancallahan.opus.compiler.jvm.attributes.Attribute;
 import net.seancallahan.opus.compiler.jvm.attributes.Code;
 import net.seancallahan.opus.lang.Class;
@@ -22,7 +23,8 @@ public class ClassFile
     private static final int minorVersion = 0;
     private static final int majorVersion = 55;
 
-    private final Class clazz;
+    private Variable[] fields;
+    private Function[] functions;
 
     private final ConstantPool constantPool = new ConstantPool();
 
@@ -41,28 +43,52 @@ public class ClassFile
 
     private final Map<Declaration, ConstantDeclaration> declarations = new HashMap<>();
 
-    public ClassFile(Class clazz, String name)
+    public ClassFile(String name, String pkg, Class clazz)
     {
-        this.clazz = clazz;
+        this(name, pkg, clazz.isPublic() ? AccessFlag.PUBLIC : AccessFlag.PRIVATE);
 
-        accessFlags = clazz.isPublic() ? AccessFlag.PUBLIC : AccessFlag.PRIVATE;
+        this.functions = new Function[clazz.getMethods().size()];
+        for (int i = 0; i < functions.length; i++)
+        {
+            Method method = clazz.getMethods().get(i);
+            addDeclaration(method);
+            this.functions[i] = method;
+        }
 
-        short nameIndex = constantPool.add(new Constant<>(Constant.Kind.UTF8, "$test/" + name));
+        this.fields = new Variable[clazz.getFields().size()];
+        for (int i = 0; i < fields.length; i++)
+        {
+            Variable field = clazz.getFields().get(i);
+            addDeclaration(field);
+            this.fields[i] = field;
+        }
+    }
+
+    public ClassFile(String name, String pkg, List<Function> functions)
+    {
+        this(name, pkg, AccessFlag.PUBLIC); // static classes are always public
+
+        this.functions = new Function[functions.size()];
+        for (int i = 0; i < this.functions.length; i++)
+        {
+            Function function = functions.get(i);
+            addDeclaration(function);
+            this.functions[i] = function;
+        }
+
+        this.fields = new Variable[0];
+    }
+
+    private ClassFile(String name, String pkg, short accessFlag)
+    {
+        short nameIndex = constantPool.add(new Constant<>(Constant.Kind.UTF8, pkg + "/" + name));
         this.thisClass = constantPool.add(new Constant<>(Constant.Kind.CLASS, nameIndex));
 
         // TODO: write opus base Object class
         short superIndex = constantPool.add(new Constant<>(Constant.Kind.UTF8, "java/lang/Object"));
         this.superClass = constantPool.add(new Constant<>(Constant.Kind.CLASS, superIndex));
 
-        for (Method method : clazz.getMethods())
-        {
-            addDeclaration(method);
-        }
-
-        for (Variable field : clazz.getFields())
-        {
-            addDeclaration(field);
-        }
+        this.accessFlags = accessFlag;
     }
 
     public void write(DataOutputStream out) throws IOException, CompilerException
@@ -77,20 +103,20 @@ public class ClassFile
 
         buffer.writeShort(0); // interfaces_count
 
-        buffer.writeShort(clazz.getFields().size());
-        for (Variable field : clazz.getFields())
+        buffer.writeShort(fields.length);
+        for (Variable field : fields)
         {
             writeField(buffer, field, declarations.get(field));
         }
 
-        buffer.writeShort(clazz.getMethods().size() + 1);
+        buffer.writeShort(functions.length + 1); // +1 for the constructor
 
         // JVM requires a constructor, so make an empty one.
-        writeMethod(buffer, null, initializer);
+        writeFunction(buffer, null, initializer);
 
-        for (Method method : clazz.getMethods())
+        for (Function function : functions)
         {
-            writeMethod(buffer, method, declarations.get(method));
+            writeFunction(buffer, function, declarations.get(function));
         }
 
         buffer.writeShort(0); // attributes_count
@@ -117,10 +143,10 @@ public class ClassFile
         out.writeShort(0); // attributes
     }
 
-    private void writeMethod(DataOutputStream out, Method method, ConstantDeclaration cd) throws IOException, CompilerException
+    private void writeFunction(DataOutputStream out, Function function, ConstantDeclaration cd) throws IOException, CompilerException
     {
         short accessFlags = AccessFlag.PRIVATE;
-        if (method == null || method.isPublic())
+        if (function == null || function.isPublic())
         {
             accessFlags = AccessFlag.PUBLIC;
         }
@@ -130,7 +156,7 @@ public class ClassFile
         out.writeShort(cd.getDescriptorIndex());
 
         List<Attribute> attributes = new ArrayList<>();
-        attributes.add(new Code(constantPool, method));
+        attributes.add(new Code(constantPool, function));
 
         out.writeShort(attributes.size()); // attributes_count
         for (Attribute attribute : attributes)

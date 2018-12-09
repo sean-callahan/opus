@@ -10,10 +10,9 @@ import net.seancallahan.opus.lang.Method;
 
 import java.io.DataOutputStream;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 
 public class SourceFile
@@ -65,39 +64,32 @@ public class SourceFile
             fileName = fileName.substring(0, pos);
         }
 
-        Class ghost = null;
+        List<Function> staticFunctions = new ArrayList<>();
 
         for (Declaration declaration : parser.getDeclarations().values())
         {
             if (declaration instanceof Class)
             {
                 Class clazz = (Class)declaration;
-
-                generateClassFile(basePath, fileName + "_" + clazz.getName().getValue(), clazz);
+                String name = clazz.getName().getValue();
+                createClassFile(basePath, fileName + "_" + name, new ClassFile(name, "test", clazz));
             }
             else if (declaration instanceof Function && !(declaration instanceof Method))
             {
-                Function function = (Function)declaration;
-
-                if (ghost == null)
-                {
-                    ghost = new Class(null);
-                }
-                ghost.getMethods().add(new Method(function, ghost));
+                staticFunctions.add((Function) declaration);
             }
         }
 
-        if (ghost != null)
+        if (staticFunctions.size() > 0)
         {
-            generateClassFile(basePath, fileName + "_static", ghost);
+            createClassFile(basePath, fileName + "_static", new ClassFile(fileName + "_static", "test", staticFunctions));
         }
     }
 
-    private static void generateClassFile(String base, String name, Class clazz) throws IOException, CompilerException
+    private static void createClassFile(String base, String name, ClassFile file) throws IOException, CompilerException
     {
-        ClassFile cf = new ClassFile(clazz, name);
         FileOutputStream s = new FileOutputStream(base + File.pathSeparator + name + ".class");
-        cf.write(new DataOutputStream(s));
+        file.write(new DataOutputStream(s));
         s.close();
     }
 
