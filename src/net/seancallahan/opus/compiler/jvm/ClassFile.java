@@ -7,6 +7,7 @@ import net.seancallahan.opus.compiler.Token;
 import net.seancallahan.opus.compiler.TokenType;
 import net.seancallahan.opus.compiler.jvm.attributes.Attribute;
 import net.seancallahan.opus.compiler.jvm.attributes.Code;
+import net.seancallahan.opus.compiler.jvm.attributes.SourceFile;
 import net.seancallahan.opus.lang.Class;
 import net.seancallahan.opus.lang.Declaration;
 import net.seancallahan.opus.lang.Field;
@@ -15,6 +16,7 @@ import net.seancallahan.opus.lang.Variable;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -43,10 +45,11 @@ public class ClassFile
 
     private final Constant.MethodRef initializer;
     private final Map<String, Constant.Reference> references = new HashMap<>();
+    private final List<Attribute> attributes = new ArrayList<>();
 
-    public ClassFile(Class clazz)
+    public ClassFile(File file, Class clazz)
     {
-        this(clazz, clazz.isPublic() ? AccessFlag.PUBLIC : AccessFlag.PRIVATE);
+        this(file, clazz, clazz.isPublic() ? AccessFlag.PUBLIC : AccessFlag.PRIVATE);
 
         this.methods = new Method[clazz.getMethods().size()];
         for (int i = 0; i < methods.length; i++)
@@ -65,9 +68,9 @@ public class ClassFile
         }
     }
 
-    public ClassFile(String name, String pkg, List<Function> functions)
+    public ClassFile(File file, String name, String pkg, List<Function> functions)
     {
-        this(new Class(new Package(pkg), new Token(TokenType.NAME, name)) , AccessFlag.PUBLIC); // static classes are always public
+        this(file, new Class(new Package(pkg), new Token(TokenType.NAME, name)) , AccessFlag.PUBLIC); // static classes are always public
 
         this.methods = new Method[functions.size()];
         for (int i = 0; i < this.methods.length; i++)
@@ -81,7 +84,7 @@ public class ClassFile
         this.fields = new Variable[0];
     }
 
-    private ClassFile(Class clazz, short accessFlag)
+    private ClassFile(File file, Class clazz, short accessFlag)
     {
         this.theClass = clazz;
 
@@ -98,6 +101,8 @@ public class ClassFile
         this.superClass = constantPool.add(new Constant.Class(constantPool, base));
 
         this.accessFlags = accessFlag;
+
+        this.attributes.add(new SourceFile(constantPool, file));
     }
 
     public ConstantPool getConstantPool()
@@ -143,7 +148,11 @@ public class ClassFile
             writeFunction(buffer, function, references.get(function.getName().getValue()));
         }
 
-        buffer.writeShort(0); // attributes_count
+        buffer.writeShort(attributes.size());
+        for (Attribute attribute : attributes)
+        {
+            attribute.write(buffer);
+        }
 
         constantPool.write(out);
 

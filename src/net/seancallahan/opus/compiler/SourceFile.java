@@ -72,7 +72,7 @@ public class SourceFile
             {
                 Class clazz = (Class)declaration;
                 String name = clazz.getName().getValue();
-                createClassFile(basePath, fileName + "_" + name, new ClassFile(clazz));
+                createClassFile(basePath, fileName + "_" + name, new ClassFile(file, clazz));
             }
             else if (declaration instanceof Function && !(declaration instanceof Method))
             {
@@ -82,7 +82,7 @@ public class SourceFile
 
         if (staticFunctions.size() > 0)
         {
-            createClassFile(basePath, fileName + "_static", new ClassFile(fileName + "_static", "test", staticFunctions));
+            createClassFile(basePath, fileName + "_static", new ClassFile(file, fileName + "_static", "test", staticFunctions));
         }
     }
 
