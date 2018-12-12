@@ -152,7 +152,7 @@ public class Parser
         context.expect(TokenType.DECLARE_GLOBAL);
 
         // TODO: scope _should_ be child of parent class'.
-        Method method = new Method(parent, name, Scope.childOf(global));
+        Method method = new Method(parent, name, Scope.childOf(global), false);
         parseFunction(context, method);
 
         addDeclaration(method);

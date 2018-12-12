@@ -14,9 +14,9 @@ public class ConstantPool
         for (short index = 0; index < pool.size(); index++)
         {
             Constant constant = pool.get(index);
-            if (constant.equals(item))
+            if (constant.getKind() == item.getKind() && constant.getValue().equals(item.getValue()))
             {
-                return index;
+                return (short)(index+1);
             }
         }
         pool.add(item);
@@ -35,7 +35,7 @@ public class ConstantPool
 
     public short search(Constant.Kind kind, Object value)
     {
-        for (short i = 1; i <= pool.size(); i++)
+        for (short i = 0; i < pool.size(); i++)
         {
             Constant constant = pool.get(i);
             if (constant.getKind() != kind)
@@ -44,7 +44,7 @@ public class ConstantPool
             }
             if (constant.getValue().equals(value))
             {
-                return i;
+                return (short)(i+1);
             }
         }
         return -1;

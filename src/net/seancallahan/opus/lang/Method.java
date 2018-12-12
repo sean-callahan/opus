@@ -9,25 +9,33 @@ public final class Method extends Function implements Member
     private Class parent;
 
     private final Token parentName;
+    private final boolean _static;
 
-    public Method(Token parentName, Token name, Scope global)
+    public Method(Token parentName, Token name, Scope global, boolean _static)
     {
         super(name, global);
         this.parentName = parentName;
+        this._static = _static;
 
         getScope().put("this", null);
     }
 
-    public Method(Function function, Class parent)
+    public Method(Function function, Class parent, boolean _static)
     {
         super(function);
         this.parentName = parent.getName();
         this.parent = parent;
+        this._static = _static;
     }
 
     public Class getParent()
     {
         return parent;
+    }
+
+    public boolean isStatic()
+    {
+        return _static;
     }
 
     public void setParent(Class parent)

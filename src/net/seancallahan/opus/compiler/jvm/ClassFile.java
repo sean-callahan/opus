@@ -76,7 +76,7 @@ public class ClassFile
         for (int i = 0; i < this.methods.length; i++)
         {
             Function function = functions.get(i);
-            Method method = new Method(function, getTheClass());
+            Method method = new Method(function, getTheClass(), true);
             addDeclaration(method);
             this.methods[i] = method;
         }
@@ -96,7 +96,7 @@ public class ClassFile
 
         Function init = new Function(new Token(TokenType.NAME, "<init>"), null);
 
-        this.initializer = new Constant.MethodRef(constantPool, new Method(init, base));
+        this.initializer = new Constant.MethodRef(constantPool, new Method(init, base, false));
 
         this.superClass = constantPool.add(new Constant.Class(constantPool, base));
 
@@ -141,11 +141,11 @@ public class ClassFile
         buffer.writeShort(methods.length + 1); // +1 for the constructor
 
         // JVM requires a constructor, so make an empty one.
-        writeFunction(buffer, null, initializer);
+        writeFunction(buffer, (Method) initializer.getValue(), initializer);
 
-        for (Function function : methods)
+        for (Method method : methods)
         {
-            writeFunction(buffer, function, references.get(function.getName().getValue()));
+            writeFunction(buffer, method, references.get(method.getName().getValue()));
         }
 
         buffer.writeShort(attributes.size());
@@ -188,14 +188,14 @@ public class ClassFile
         out.writeShort(0); // attributes
     }
 
-    private void writeFunction(DataOutputStream out, Function function, Constant.Reference reference) throws IOException, CompilerException
+    private void writeFunction(DataOutputStream out, Method method, Constant.Reference reference) throws IOException, CompilerException
     {
         short accessFlags = AccessFlag.PRIVATE;
-        if (function == null || function.isPublic())
+        if (method == null || method.isPublic())
         {
             accessFlags = AccessFlag.PUBLIC;
         }
-        if (!(function instanceof Method))
+        if (method != null && method.isStatic())
         {
             accessFlags |= AccessFlag.STATIC;
         }
@@ -205,7 +205,7 @@ public class ClassFile
         out.writeShort(reference.getNameAndType().getDescriptorIndex());
 
         List<Attribute> attributes = new ArrayList<>();
-        attributes.add(new Code(this, function));
+        attributes.add(new Code(this, method));
 
         out.writeShort(attributes.size()); // attributes_count
         for (Attribute attribute : attributes)
