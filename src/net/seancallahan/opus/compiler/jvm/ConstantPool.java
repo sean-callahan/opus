@@ -52,7 +52,7 @@ public class ConstantPool
 
     public void write(DataOutputStream out) throws IOException
     {
-        out.writeShort(pool.size());
+        out.writeShort((short)pool.size());
         for (Constant c : pool)
         {
             c.write(out);

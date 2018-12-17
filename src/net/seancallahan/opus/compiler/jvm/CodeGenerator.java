@@ -13,7 +13,7 @@ import net.seancallahan.opus.lang.Method;
 import net.seancallahan.opus.lang.Type;
 import net.seancallahan.opus.lang.Variable;
 
-import java.io.ByteArrayOutputStream;
+import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,7 +30,8 @@ public class CodeGenerator
     private short maxLocalVars;
 
     private final ConstantPool pool;
-    private final ByteArrayOutputStream code;
+    //private final ByteArrayOutputStream code;
+    private final ByteBuffer code;
 
     private final LocalVariableTable localVariableTable;
     private final LineNumberTable lineNumberTable;
@@ -38,13 +39,13 @@ public class CodeGenerator
     private Map<String, Byte> variables = new HashMap<>();
     private byte nextVariable = 0;
 
-    public CodeGenerator(ClassFile file, Code attribute) throws CompilerException
+    public CodeGenerator(ClassFile file, ByteBuffer buffer, Code attribute) throws CompilerException
     {
         this.classFile = file;
         this.function = attribute.getFunction();
         this.pool = attribute.getPool();
-        this.localVariableTable = new LocalVariableTable(pool);
-        this.lineNumberTable = new LineNumberTable(pool);
+        this.localVariableTable = new LocalVariableTable(pool, buffer);
+        this.lineNumberTable = new LineNumberTable(pool, buffer);
         this.code = attribute.getCode();
 
         if (function == null)
@@ -74,7 +75,7 @@ public class CodeGenerator
         }
     }
 
-    private void generateBody(ByteArrayOutputStream out, Body body) throws CompilerException
+    private void generateBody(ByteBuffer out, Body body) throws CompilerException
     {
         for (Statement stmt : body.getStatements())
         {
@@ -105,7 +106,7 @@ public class CodeGenerator
                 short line = (short)stmt.getStartPosition().getLine();
                 if (!lineNumberTable.contains(line))
                 {
-                    lineNumberTable.add(line, (short)code.size());
+                    lineNumberTable.add(line, (short)code.position());
                 }
             }
         }
@@ -121,18 +122,18 @@ public class CodeGenerator
         return maxLocalVars;
     }
 
-    private static void add(ByteArrayOutputStream out, Instruction instruction, short index)
+    private static void add(ByteBuffer out, Instruction instruction, short index)
     {
         add(out, instruction, (byte)((index >> 8) & 0xFF),(byte)(index & 0xFF));
     }
 
-    private static void add(ByteArrayOutputStream out, Instruction instruction, byte... args)
+    private static void add(ByteBuffer out, Instruction instruction, byte... args)
     {
-        out.write(instruction.getOpcode());
-        out.write(args, 0, args.length);
+        out.put(instruction.getOpcode());
+        out.put(args);
     }
 
-    private void expr(ByteArrayOutputStream out, Expression expr)
+    private void expr(ByteBuffer out, Expression expr)
     {
         // NOTE: the expression _should_ have matching types at this point.
         // TODO: convert non-matching types
@@ -159,20 +160,20 @@ public class CodeGenerator
         }
     }
 
-    private void binary(ByteArrayOutputStream out, Expression.Binary expr)
+    private void binary(ByteBuffer out, Expression.Binary expr)
     {
         expr(out, expr.getLeft());
         expr(out, expr.getRight());
         add(out, getOpInstruction(expr.getLeft().getType(), expr.getOperator()));
     }
 
-    private void unary(ByteArrayOutputStream out, Expression.Unary expr)
+    private void unary(ByteBuffer out, Expression.Unary expr)
     {
         expr(out, expr.getRight());
         add(out, getOpInstruction(expr.getType(), expr.getOperator()));
     }
 
-    private void literal(ByteArrayOutputStream out, Expression.Literal expr)
+    private void literal(ByteBuffer out, Expression.Literal expr)
     {
         String text = expr.getToken().getValue();
 
@@ -185,7 +186,7 @@ public class CodeGenerator
         pushNumber(out, expr.getType(), expr.getToken().getValue());
     }
 
-    private void variableDeclaration(ByteArrayOutputStream out, Statement.VariableDeclaration declaration)
+    private void variableDeclaration(ByteBuffer out, Statement.VariableDeclaration declaration)
     {
         Type type = declaration.getVariable().getType();
         if (!type.isPrimitive())
@@ -204,7 +205,7 @@ public class CodeGenerator
 
         int length = storeLast(out, type, nextVariable);
 
-        localVariableTable.add(declaration.getVariable(), (short)code.size(), (short)3, nextVariable);
+        localVariableTable.add(declaration.getVariable(), (short)code.position(), (short)3, nextVariable);
 
         variables.put(declaration.getVariable().getName().getValue(), this.nextVariable);
 
@@ -212,7 +213,7 @@ public class CodeGenerator
         maxLocalVars += length;
     }
 
-    private void assignment(ByteArrayOutputStream out, Statement.Assignment assignment) throws CompilerException
+    private void assignment(ByteBuffer out, Statement.Assignment assignment) throws CompilerException
     {
         String var = null;
         byte index = 0;
@@ -236,7 +237,7 @@ public class CodeGenerator
         storeLast(out, expr.getType(), index);
     }
 
-    private void functionCall(ByteArrayOutputStream out, Expression.FunctionCall call)
+    private void functionCall(ByteBuffer out, Expression.FunctionCall call)
     {
         if (call.isMethod())
         {
@@ -271,7 +272,7 @@ public class CodeGenerator
         }
     }
 
-    private static int storeLast(ByteArrayOutputStream out, Type type, byte index)
+    private static int storeLast(ByteBuffer out, Type type, byte index)
     {
         String name = type.getName();
         if (name.endsWith("64"))
@@ -331,7 +332,7 @@ public class CodeGenerator
         return 1;
     }
 
-    private int pushNumber(ByteArrayOutputStream out, Type type, String value)
+    private int pushNumber(ByteBuffer out, Type type, String value)
     {
         if (type.getName().startsWith("f"))
         {
@@ -341,7 +342,7 @@ public class CodeGenerator
         return pushInteger(out, type, Long.parseLong(value));
     }
 
-    private int pushInteger(ByteArrayOutputStream out, Type type, long value)
+    private int pushInteger(ByteBuffer out, Type type, long value)
     {
         String name = type.getName();
 
@@ -408,7 +409,7 @@ public class CodeGenerator
         return stackSize;
     }
 
-    private int pushFloat(ByteArrayOutputStream out, Type type, double value)
+    private int pushFloat(ByteBuffer out, Type type, double value)
     {
         switch (type.getName())
         {
@@ -432,7 +433,7 @@ public class CodeGenerator
         return 2;
     }
 
-    public void loadNumber(ByteArrayOutputStream out, Type type, byte index)
+    public void loadNumber(ByteBuffer out, Type type, byte index)
     {
         String name = type.getName();
 
@@ -503,7 +504,7 @@ public class CodeGenerator
         }
     }
 
-    private void returnStatement(ByteArrayOutputStream out, Statement.Return stmt)
+    private void returnStatement(ByteBuffer out, Statement.Return stmt)
     {
         Expression expr = stmt.getExpression();
         if (expr == null)

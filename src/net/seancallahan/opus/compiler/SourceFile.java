@@ -20,11 +20,20 @@ public class SourceFile
     private final File file;
 
     private List<Token> tokens;
+    private Lexer lexer;
     private Parser parser;
 
-    public SourceFile(File file)
+    private long lastParseDuration;
+
+    public SourceFile(File file) throws IOException, Lexer.Error
     {
         this.file = file;
+        this.lexer = new Lexer(file);
+    }
+
+    public Lexer getLexer()
+    {
+        return lexer;
     }
 
     public Parser getParser()
@@ -32,9 +41,19 @@ public class SourceFile
         return parser;
     }
 
-    public void lex() throws IOException, Lexer.Error
+    public void lex()
     {
-        this.tokens = new Lexer(file).getTokens();
+        this.tokens = lexer.getTokens();
+    }
+
+    public long getLastLexDuration()
+    {
+        return lexer.getLastDuration();
+    }
+
+    public long getLastParseDuration()
+    {
+        return lastParseDuration;
     }
 
     public void parse() throws CompilerException
@@ -44,6 +63,8 @@ public class SourceFile
             throw new IllegalStateException("must first call lex()");
         }
 
+        long start = System.nanoTime();
+
         this.parser = new Parser(this, tokens, new Scope(null));
         this.parser.parse();
 
@@ -52,6 +73,8 @@ public class SourceFile
 
         TypeAnalysis typeAnalysis = new TypeAnalysis(parser);
         typeAnalysis.perform();
+
+        lastParseDuration = System.nanoTime() - start;
     }
 
     public void compile() throws IOException, CompilerException

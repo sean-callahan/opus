@@ -5,8 +5,7 @@ import net.seancallahan.opus.compiler.jvm.ConstantPool;
 import net.seancallahan.opus.compiler.jvm.Descriptor;
 import net.seancallahan.opus.lang.Variable;
 
-import java.io.DataOutputStream;
-import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -14,9 +13,9 @@ public class LocalVariableTable extends Attribute
 {
     private final List<LocalVariable> items = new ArrayList<>();
 
-    public LocalVariableTable(ConstantPool pool)
+    public LocalVariableTable(ConstantPool pool, ByteBuffer buffer)
     {
-        super(pool, "LocalVariableTable");
+        super(pool, buffer, "LocalVariableTable");
     }
 
     public void add(Variable variable, short codePosition, short codeLength, short index)
@@ -25,14 +24,13 @@ public class LocalVariableTable extends Attribute
     }
 
     @Override
-    public void write(DataOutputStream out) throws IOException
+    public void write(ByteBuffer out)
     {
-        buffer.writeShort(items.size());
+        body.putShort((short)items.size());
         for (LocalVariable item : items)
         {
-            item.write(buffer);
+            item.write(body);
         }
-
         super.write(out);
     }
 
@@ -53,13 +51,13 @@ public class LocalVariableTable extends Attribute
             this.index = index;
         }
 
-        private void write(DataOutputStream out) throws IOException
+        private void write(ByteBuffer out)
         {
-            out.writeShort(startPc);
-            out.writeShort(length);
-            out.writeShort(nameIndex);
-            out.writeShort(descriptorIndex);
-            out.writeShort(index);
+            out.putShort(startPc);
+            out.putShort(length);
+            out.putShort(nameIndex);
+            out.putShort(descriptorIndex);
+            out.putShort(index);
         }
     }
 }

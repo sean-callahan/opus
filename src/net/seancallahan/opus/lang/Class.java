@@ -51,4 +51,9 @@ public final class Class implements Declaration
         return Character.isUpperCase(name.getValue().charAt(0));
     }
 
+    @Override
+    public String toString()
+    {
+        return name.getValue();
+    }
 }

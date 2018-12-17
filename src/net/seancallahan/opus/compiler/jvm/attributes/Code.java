@@ -4,32 +4,27 @@ import net.seancallahan.opus.compiler.CompilerException;
 import net.seancallahan.opus.compiler.Function;
 import net.seancallahan.opus.compiler.jvm.ClassFile;
 import net.seancallahan.opus.compiler.jvm.CodeGenerator;
-import net.seancallahan.opus.compiler.jvm.ConstantPool;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.nio.ByteBuffer;
 
-public class Code extends Attribute
+public class Code extends AttributeParent
 {
+    private static final int MAX_CODE_SIZE = 1 << 10;
+
     private final Function function;
 
     private final short maxStack;
     private final short maxLocals;
 
-    private final ByteArrayOutputStream code = new ByteArrayOutputStream();
+    private final ByteBuffer code = ByteBuffer.allocateDirect(MAX_CODE_SIZE);
 
-    private final List<Attribute> attributes = new ArrayList<>();
-
-    public Code(ClassFile file, Function function) throws CompilerException
+    public Code(ClassFile file, ByteBuffer buffer, Function function) throws CompilerException
     {
-        super(file.getConstantPool(), "Code");
+        super(file.getConstantPool(), buffer, "Code");
 
         this.function = function;
 
-        CodeGenerator gen = new CodeGenerator(file, this);
+        CodeGenerator gen = new CodeGenerator(file, getAttributeBuffer(), this);
 
         this.maxStack = gen.getMaxStack();
         this.maxLocals = gen.getMaxLocalVars();
@@ -40,31 +35,26 @@ public class Code extends Attribute
         return function;
     }
 
-    public List<Attribute> getAttributes()
-    {
-        return attributes;
-    }
-
-    public ByteArrayOutputStream getCode()
+    public ByteBuffer getCode()
     {
         return code;
     }
 
     @Override
-    public void write(DataOutputStream out) throws IOException
+    public void write(ByteBuffer out)
     {
-        buffer.writeShort(maxStack);
-        buffer.writeShort(maxLocals);
+        body.putShort(maxStack);
+        body.putShort(maxLocals);
 
-        buffer.writeInt(code.size());
-        code.writeTo(buffer);
+        body.putInt(code.position());
+        body.put(code);
 
-        buffer.writeShort(0); // exception_table_length
+        body.putShort((short)0); // exception_table_length
 
-        buffer.writeShort(attributes.size());
-        for (Attribute attribute : attributes)
+        body.putShort((short)getAttributes().size());
+        for (Attribute attribute : getAttributes())
         {
-            attribute.write(buffer);
+            attribute.write(body);
         }
 
         super.write(out);

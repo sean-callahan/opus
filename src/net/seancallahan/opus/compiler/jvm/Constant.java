@@ -1,6 +1,5 @@
 package net.seancallahan.opus.compiler.jvm;
 
-import net.seancallahan.opus.compiler.Function;
 import net.seancallahan.opus.lang.Declaration;
 import net.seancallahan.opus.lang.Field;
 import net.seancallahan.opus.lang.Member;

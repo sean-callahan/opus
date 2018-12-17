@@ -3,25 +3,24 @@ package net.seancallahan.opus.compiler.jvm.attributes;
 import net.seancallahan.opus.compiler.jvm.Constant;
 import net.seancallahan.opus.compiler.jvm.ConstantPool;
 
-import java.io.DataOutputStream;
 import java.io.File;
-import java.io.IOException;
+import java.nio.ByteBuffer;
 
 public class SourceFile extends Attribute
 {
     private final short nameIndex;
 
-    public SourceFile(ConstantPool pool, File file)
+    public SourceFile(ConstantPool pool, ByteBuffer buffer, File file)
     {
-        super(pool, "SourceFile");
+        super(pool, buffer, "SourceFile");
 
         nameIndex = pool.add(new Constant.UTF8(pool, file.getName()));
     }
 
     @Override
-    public void write(DataOutputStream out) throws IOException
+    public void write(ByteBuffer out)
     {
-        buffer.writeShort(nameIndex);
+        body.putShort(nameIndex);
         super.write(out);
     }
 }

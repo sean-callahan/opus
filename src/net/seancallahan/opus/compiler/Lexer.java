@@ -21,6 +21,8 @@ public class Lexer
 
     private final SourceFile.Position position;
 
+    private long lastDuration;
+
     public Lexer(File file) throws IOException, Error
     {
         this.input = new PushbackInputStream(new FileInputStream(file));
@@ -31,11 +33,18 @@ public class Lexer
 
     private void lex() throws IOException, Error
     {
+        long start = System.nanoTime();
         boolean eof;
         do
         {
             eof = next();
         } while (!eof);
+        lastDuration = System.nanoTime() - start;
+    }
+
+    public long getLastDuration()
+    {
+        return lastDuration;
     }
 
     private boolean next() throws IOException, Error

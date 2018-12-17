@@ -2,17 +2,16 @@ package net.seancallahan.opus.compiler.jvm.attributes;
 
 import net.seancallahan.opus.compiler.jvm.ConstantPool;
 
-import java.io.DataOutputStream;
-import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.HashMap;
 
 public class LineNumberTable extends Attribute
 {
     private final HashMap<Short, Short> lineNumbers = new HashMap<>();
 
-    public LineNumberTable(ConstantPool pool)
+    public LineNumberTable(ConstantPool pool, ByteBuffer buffer)
     {
-        super(pool, "LineNumberTable");
+        super(pool, buffer, "LineNumberTable");
     }
 
     public void add(short lineNumber, short codePosition)
@@ -26,14 +25,14 @@ public class LineNumberTable extends Attribute
     }
 
     @Override
-    public void write(DataOutputStream out) throws IOException
+    public void write(ByteBuffer out)
     {
-        buffer.writeShort(lineNumbers.size());
-        for (Short lineNumber : lineNumbers.keySet())
+        body.putShort((short)lineNumbers.size());
+        for (short lineNumber : lineNumbers.keySet())
         {
             short startPc = lineNumbers.get(lineNumber);
-            buffer.writeShort(startPc);
-            buffer.write(lineNumber);
+            body.putShort(startPc);
+            body.putShort(lineNumber);
         }
 
         super.write(out);

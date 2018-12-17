@@ -14,10 +14,10 @@ import net.seancallahan.opus.lang.Field;
 import net.seancallahan.opus.lang.Method;
 import net.seancallahan.opus.lang.Variable;
 
-import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -25,6 +25,8 @@ import java.util.Map;
 
 public class ClassFile
 {
+    private static final int MAX_METHOD_BUFFER_SIZE = 1 << 13;
+
     private static final long magic = 0xCAFEBABE;
     private static final int minorVersion = 0;
     private static final int majorVersion = 55;
@@ -36,8 +38,10 @@ public class ClassFile
 
     private final ConstantPool constantPool = new ConstantPool();
 
-    private final ByteArrayOutputStream internalBuffer = new ByteArrayOutputStream();
-    private final DataOutputStream buffer = new DataOutputStream(internalBuffer);
+    private final ByteBuffer buffer = ByteBuffer.allocateDirect(1 << 13);
+    private final ByteBuffer attributeBuffer = ByteBuffer.allocateDirect(1 << 13);
+    //private final ByteArrayOutputStream internalBuffer = new ByteArrayOutputStream();
+    //private final DataOutputStream buffer = new DataOutputStream(internalBuffer);
 
     private final int accessFlags;
     private final short thisClass;
@@ -102,7 +106,7 @@ public class ClassFile
 
         this.accessFlags = accessFlag;
 
-        this.attributes.add(new SourceFile(constantPool, file));
+        this.attributes.add(new SourceFile(constantPool, attributeBuffer, file));
     }
 
     public ConstantPool getConstantPool()
@@ -126,19 +130,19 @@ public class ClassFile
         out.writeShort((short)minorVersion);
         out.writeShort((short)majorVersion);
 
-        buffer.writeShort((short)accessFlags);
-        buffer.writeShort(thisClass);
-        buffer.writeShort(superClass);
+        buffer.putShort((short)accessFlags);
+        buffer.putShort(thisClass);
+        buffer.putShort(superClass);
 
-        buffer.writeShort(0); // interfaces_count
+        buffer.putShort((short)0); // interfaces_count
 
-        buffer.writeShort(fields.length);
+        buffer.putShort((short)fields.length);
         for (Variable field : fields)
         {
             writeField(buffer, field, references.get(field.getName().getValue()));
         }
 
-        buffer.writeShort(methods.length + 1); // +1 for the constructor
+        buffer.putShort((short)(methods.length + 1)); // +1 for the constructor
 
         // JVM requires a constructor, so make an empty one.
         writeFunction(buffer, (Method) initializer.getValue(), initializer);
@@ -148,7 +152,7 @@ public class ClassFile
             writeFunction(buffer, method, references.get(method.getName().getValue()));
         }
 
-        buffer.writeShort(attributes.size());
+        buffer.putShort((short)attributes.size());
         for (Attribute attribute : attributes)
         {
             attribute.write(buffer);
@@ -156,7 +160,7 @@ public class ClassFile
 
         constantPool.write(out);
 
-        internalBuffer.writeTo(out);
+        out.write(buffer.array());
     }
 
     private void addDeclaration(Declaration declaration)
@@ -179,17 +183,19 @@ public class ClassFile
         constantPool.add(ref);
     }
 
-    private void writeField(DataOutputStream out, Variable field, Constant.Reference reference) throws IOException
+    private static void writeField(ByteBuffer out, Variable field, Constant.Reference reference) throws IOException
     {
-        out.writeShort(AccessFlag.PUBLIC);
-        out.writeShort(reference.getNameAndType().getNameIndex());
-        out.writeShort(reference.getNameAndType().getDescriptorIndex());
+        out.putShort(AccessFlag.PUBLIC);
+        out.putShort(reference.getNameAndType().getNameIndex());
+        out.putShort(reference.getNameAndType().getDescriptorIndex());
 
-        out.writeShort(0); // attributes
+        out.putShort((short)0); // attributes
     }
 
-    private void writeFunction(DataOutputStream out, Method method, Constant.Reference reference) throws IOException, CompilerException
+    private void writeFunction(ByteBuffer out, Method method, Constant.Reference reference) throws IOException, CompilerException
     {
+        ByteBuffer buffer = ByteBuffer.allocateDirect(MAX_METHOD_BUFFER_SIZE);
+
         short accessFlags = AccessFlag.PRIVATE;
         if (method == null || method.isPublic())
         {
@@ -200,17 +206,19 @@ public class ClassFile
             accessFlags |= AccessFlag.STATIC;
         }
 
-        out.writeShort(accessFlags);
-        out.writeShort(reference.getNameAndType().getNameIndex());
-        out.writeShort(reference.getNameAndType().getDescriptorIndex());
+        buffer.putShort(accessFlags);
+        buffer.putShort(reference.getNameAndType().getNameIndex());
+        buffer.putShort(reference.getNameAndType().getDescriptorIndex());
 
         List<Attribute> attributes = new ArrayList<>();
-        attributes.add(new Code(this, method));
+        attributes.add(new Code(this, attributeBuffer, method));
 
-        out.writeShort(attributes.size()); // attributes_count
+        buffer.putShort((short)attributes.size()); // attributes_count
         for (Attribute attribute : attributes)
         {
-            attribute.write(out);
+            attribute.write(buffer);
         }
+
+        out.put(buffer);
     }
 }
